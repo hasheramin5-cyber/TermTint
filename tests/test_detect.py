@@ -98,7 +98,35 @@ def test_enable_vt_mode_non_windows(monkeypatch):
 
 
 def test_enable_vt_mode_windows_exception(monkeypatch):
+    import ctypes
     monkeypatch.setattr(sys, "platform", "win32")
-    get_handle_path = "ctypes.windll.kernel32.GetStdHandle"
-    with patch(get_handle_path, side_effect=Exception("ctypes error")):
-        assert enable_vt_mode() is False
+    mock_kernel32 = MagicMock()
+    mock_kernel32.GetStdHandle.side_effect = Exception("ctypes error")
+    mock_windll = MagicMock()
+    mock_windll.kernel32 = mock_kernel32
+
+    mock_wintypes = MagicMock()
+    monkeypatch.setattr(ctypes, "windll", mock_windll, raising=False)
+    monkeypatch.setattr(ctypes, "wintypes", mock_wintypes, raising=False)
+    monkeypatch.setitem(sys.modules, "ctypes.wintypes", mock_wintypes)
+
+    assert enable_vt_mode() is False
+
+
+def test_enable_vt_mode_windows_success(monkeypatch):
+    import ctypes
+    monkeypatch.setattr(sys, "platform", "win32")
+    mock_kernel32 = MagicMock()
+    mock_kernel32.GetStdHandle.return_value = 1
+    mock_kernel32.GetConsoleMode.return_value = True
+    mock_kernel32.SetConsoleMode.return_value = True
+    mock_windll = MagicMock()
+    mock_windll.kernel32 = mock_kernel32
+
+    mock_wintypes = MagicMock()
+    monkeypatch.setattr(ctypes, "windll", mock_windll, raising=False)
+    monkeypatch.setattr(ctypes, "wintypes", mock_wintypes, raising=False)
+    monkeypatch.setitem(sys.modules, "ctypes.wintypes", mock_wintypes)
+    monkeypatch.setattr(ctypes, "byref", lambda x: x)
+
+    assert enable_vt_mode() is True
