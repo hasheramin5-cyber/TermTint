@@ -33,13 +33,19 @@ STYLES: dict[str, str] = {
 RESET_CODE: str = "\033[0m"
 
 
-def colored(text: Any, color: str, style: Optional[str] = None) -> str:
+def colored(
+    text: Any,
+    color: str,
+    style: Optional[str] = None,
+    stream: Optional[TextIO] = None,
+) -> str:
     """Format text with ANSI escape codes for specified color and optional style.
 
     Args:
         text: Any object to be converted to a string and styled.
         color: Name of the foreground color (black, red, green, yellow, etc.).
         style: Optional style (normal, bright, dim, underline).
+        stream: Optional destination stream for color capability detection.
 
     Returns:
         str: ANSI formatted string when color is enabled, plain text otherwise.
@@ -66,7 +72,7 @@ def colored(text: Any, color: str, style: Optional[str] = None) -> str:
 
     text_str = str(text)
 
-    if not should_color():
+    if not should_color(stream=stream):
         return text_str
 
     color_code = COLORS[color_lower]
@@ -89,13 +95,16 @@ def disable_color() -> None:
     set_color_state(ColorState.DISABLED)
 
 
-def is_color_enabled() -> bool:
+def is_color_enabled(stream: Optional[TextIO] = None) -> bool:
     """Check whether colored output is currently enabled.
+
+    Args:
+        stream: Optional file stream to inspect for color support.
 
     Returns:
         bool: True if color output is enabled, False otherwise.
     """
-    return should_color()
+    return should_color(stream=stream)
 
 
 def reset_color_state() -> None:
@@ -113,9 +122,9 @@ def _print_color(
     flush: bool = False,
 ) -> None:
     """Internal helper to print colored values."""
-    text = sep.join(str(v) for v in values)
-    output = colored(text, color, style=style)
     target = file if file is not None else sys.stdout
+    text = sep.join(str(v) for v in values)
+    output = colored(text, color, style=style, stream=target)
     print(output, end=end, file=target, flush=flush)
 
 

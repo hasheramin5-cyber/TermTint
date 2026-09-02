@@ -61,20 +61,33 @@ print_cyan("Processing", "batch", 5, sep=" - ", end="...\n")
 
 ---
 
-## Handling Environment and Redirected Output
+## Stream-Aware Output and Files
 
-TermTint automatically detects when your script output is redirected to a file or piped to another program:
+TermTint automatically avoids adding ANSI escape sequences when output is redirected to a file or piped to another program:
 
 ```bash
-# Colors are automatically disabled when output is redirected
+# ANSI escape sequences are avoided automatically when output is redirected
 python my_script.py > log.txt
 ```
 
 Inside `log.txt`, the text will be clean and free from raw ANSI control sequences like `\033[31m`.
 
+You can also pass a destination `file` parameter directly to convenience functions:
+
+```python
+from termtint import print_green
+
+with open("output.txt", "w") as f:
+    print_green("Hello file", file=f)  # Automatically outputs plain text without ANSI codes
+```
+
+---
+
+## Environment Configuration
+
 ### NO_COLOR Compliance
 
-If the `NO_COLOR` environment variable is set (any non-empty value), TermTint respects standard behavior and disables color output automatically:
+TermTint respects `NO_COLOR` in automatic mode ([no-color.org](https://no-color.org)). When the `NO_COLOR` environment variable is set to any non-empty value, automatic color formatting is disabled:
 
 ```bash
 NO_COLOR=1 python my_script.py
@@ -82,16 +95,16 @@ NO_COLOR=1 python my_script.py
 
 ### Overriding Automatic Detection
 
-If you explicitly want colors regardless of TTY state, or if you want to turn off colors programmatically:
+If you explicitly want colors regardless of TTY state, or if you want to turn off colors programmatically, explicit function calls override automatic detection:
 
 ```python
 from termtint import enable_color, disable_color, colored
 
-# Force color application
+# Explicitly force colors ON (overrides automatic detection and NO_COLOR)
 enable_color()
 print(colored("Forced color text", "magenta"))
 
-# Disable all color output
+# Explicitly force colors OFF
 disable_color()
 print(colored("Plain text output", "magenta"))
 ```

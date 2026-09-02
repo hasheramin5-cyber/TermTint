@@ -120,11 +120,37 @@ def test_convenience_print_multiple_values(capsys):
     assert captured.out == "\033[32mHello-World-2026\033[0m\n"
 
 
-def test_convenience_print_custom_file():
-    enable_color()
+def test_convenience_print_custom_file_auto_mode():
+    reset_color_state()
     buf = io.StringIO()
+    # StringIO is a non-TTY stream, so AUTO mode should produce plain text
     print_red("buffer output", file=buf, end="")
-    assert buf.getvalue() == "\033[31mbuffer output\033[0m"
+    assert buf.getvalue() == "buffer output"
+
+
+def test_colored_with_explicit_stream():
+    reset_color_state()
+    non_tty_buf = io.StringIO()
+    assert colored("test", "red", stream=non_tty_buf) == "test"
+
+    from unittest.mock import MagicMock, patch
+    mock_tty = MagicMock()
+    mock_tty.isatty.return_value = True
+    with patch("termtint._detect.enable_vt_mode", return_value=True):
+        assert colored("test", "red", stream=mock_tty) == "\033[31mtest\033[0m"
+
+
+def test_explicit_overrides_with_custom_stream():
+    non_tty_buf = io.StringIO()
+
+    enable_color()
+    assert colored("test", "green", stream=non_tty_buf) == "\033[32mtest\033[0m"
+
+    disable_color()
+    from unittest.mock import MagicMock
+    mock_tty = MagicMock()
+    mock_tty.isatty.return_value = True
+    assert colored("test", "green", stream=mock_tty) == "test"
 
 
 def test_package_exports():

@@ -6,7 +6,7 @@ This document provides complete documentation for the public API surface of **Te
 
 ## Functions
 
-### `colored(text, color, style=None)`
+### `colored(text, color, style=None, stream=None)`
 
 Formats a given string or object with ANSI escape sequences for color and optional styling.
 
@@ -15,9 +15,10 @@ Formats a given string or object with ANSI escape sequences for color and option
   - Supported: `"black"`, `"red"`, `"green"`, `"yellow"`, `"blue"`, `"magenta"`, `"cyan"`, `"white"`.
 - **`style`** (`str`, optional): Text styling. Defaults to `None` (`"normal"`).
   - Supported: `"normal"`, `"bright"`, `"dim"`, `"underline"`.
+- **`stream`** (`TextIO`, optional): Destination output stream for color capability detection. Defaults to `sys.stdout`.
 
 **Returns:**
-- `str`: Formatted ANSI string if color output is enabled; plain text string if color output is disabled.
+- `str`: Formatted ANSI string if color output is enabled for the stream; plain text string otherwise.
 
 **Raises:**
 - `ValueError`: If an unsupported `color` or `style` is provided.
@@ -48,7 +49,7 @@ print(colored("Always colored", "cyan"))
 
 ### `disable_color()`
 
-Explicitly disables colored output across all subsequent calls, stripping all ANSI codes and returning plain text.
+Explicitly disables colored output across all subsequent calls, outputting plain text without ANSI escape sequences.
 
 **Example:**
 ```python
@@ -60,12 +61,14 @@ print(colored("Plain text only", "green"))  # Output: Plain text only
 
 ---
 
-### `is_color_enabled()`
+### `is_color_enabled(stream=None)`
 
-Returns the current active status of color formatting.
+Returns the current active status of color formatting for a given output stream.
+
+- **`stream`** (`TextIO`, optional): Output stream to inspect. Defaults to `sys.stdout`.
 
 **Returns:**
-- `bool`: `True` if colors will be applied, `False` otherwise.
+- `bool`: `True` if colors will be applied to the stream, `False` otherwise.
 
 **Example:**
 ```python
@@ -92,7 +95,7 @@ reset_color_state()
 
 ## Convenience Print Functions
 
-TermTint provides helper functions that combine formatting and printing in a single call. They accept all standard `print()` arguments (`sep`, `end`, `file`, `flush`) as well as an optional `style` keyword argument.
+TermTint provides helper functions that combine formatting and printing in a single call. They inspect the destination `file` stream automatically to avoid adding ANSI escape sequences to non-TTY streams.
 
 - `print_black(*values, style=None, sep=" ", end="\n", file=None, flush=False)`
 - `print_red(*values, style=None, sep=" ", end="\n", file=None, flush=False)`
@@ -110,4 +113,8 @@ from termtint import print_green, print_red, print_yellow
 print_green("Operation successful!")
 print_yellow("Disk space low", style="bright")
 print_red("Fatal Error:", "File not found", sep=" ")
+
+# Writing to a log file automatically avoids ANSI codes
+with open("app.log", "w") as f:
+    print_green("Log entry without ANSI codes", file=f)
 ```

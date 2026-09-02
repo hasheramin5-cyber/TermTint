@@ -15,10 +15,10 @@ Trusted Publishing uses OpenID Connect (OIDC) tokens issued by GitHub Actions to
 1. Log into your account on [PyPI](https://pypi.org/).
 2. Go to **Account Settings** -> **Publishers** (or navigate to [PyPI Publishing Setup](https://pypi.org/manage/account/publishing/)).
 3. Under **Add a new publisher**, select **GitHub Actions**.
-4. Fill in the required fields:
+4. Fill in the exact repository fields:
    - **PyPI Project Name**: `termtint`
-   - **Owner**: Your GitHub username or organization name (e.g. `your-username`)
-   - **Repository name**: `termtint`
+   - **Owner**: `hasheramin5-cyber`
+   - **Repository name**: `TermTint`
    - **Workflow name**: `publish.yml`
    - **Environment name**: `pypi`
 5. Click **Add Publisher**.
@@ -30,7 +30,7 @@ Trusted Publishing uses OpenID Connect (OIDC) tokens issued by GitHub Actions to
 
 ## Step 2: Configure GitHub Repository Environment
 
-1. Go to your GitHub repository on `github.com`.
+1. Go to your GitHub repository: `https://github.com/hasheramin5-cyber/TermTint`
 2. Click **Settings** -> **Environments**.
 3. Click **New environment**.
 4. Name the environment exactly: `pypi`

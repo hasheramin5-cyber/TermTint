@@ -36,9 +36,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/termtint/termtint"
-Repository = "https://github.com/termtint/termtint"
-Issues = "https://github.com/termtint/termtint/issues"
+Homepage = "https://github.com/hasheramin5-cyber/TermTint"
+Repository = "https://github.com/hasheramin5-cyber/TermTint"
+Issues = "https://github.com/hasheramin5-cyber/TermTint/issues"
 
 [tool.setuptools.packages.find]
 where = ["src"]

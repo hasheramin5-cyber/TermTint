@@ -2,7 +2,7 @@
 
 > A lightweight, zero-dependency Python library for simple colored and styled terminal output.
 
-[![CI](https://github.com/termtint/termtint/actions/workflows/ci.yml/badge.svg)](https://github.com/termtint/termtint/actions/workflows/ci.yml)
+[![CI](https://github.com/hasheramin5-cyber/TermTint/actions/workflows/ci.yml/badge.svg)](https://github.com/hasheramin5-cyber/TermTint/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/termtint.svg)](https://pypi.org/project/termtint/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/termtint.svg)](https://pypi.org/project/termtint/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -38,8 +38,8 @@ print(colored("Success!", "green"))
 - ⚡ **Zero Runtime Dependencies**: Uses only the Python standard library.
 - 🎨 **8 Foreground Colors & 4 Text Styles**: Simple, predictable ANSI styling.
 - 🪟 **Modern Windows Support**: Native Virtual Terminal support on Windows 10/11.
-- 🚫 **NO_COLOR Compliant**: Automatically respects the standard `NO_COLOR` environment variable.
-- 📄 **Redirect Aware**: Strips ANSI escape codes automatically when output is redirected to a file or pipe.
+- 🚫 **NO_COLOR Compliant**: TermTint respects `NO_COLOR` in automatic mode.
+- 📄 **Redirect & Stream Aware**: TermTint automatically avoids adding ANSI escape sequences when output is redirected to a file or pipe.
 - 🛠️ **Convenience Helpers**: Direct `print_green()`, `print_red()`, and other function helpers.
 - 🪶 **Ultra-Lightweight**: Minimal runtime overhead and simple code structure.
 
@@ -151,14 +151,14 @@ reset_color_state()
 
 ---
 
-## Automatic Terminal & Redirect Detection
+## Automatic Terminal & Stream Detection
 
 TermTint automatically detects terminal capabilities using a multi-step check:
 
 1. **Explicit Toggle**: Respects programmatic `enable_color()` or `disable_color()`.
-2. **`NO_COLOR` Variable**: If `NO_COLOR` is present in `os.environ` (non-empty), colors are disabled automatically ([no-color.org](https://no-color.org)).
-3. **`FORCE_COLOR` Variable**: If `FORCE_COLOR=1`, colors are forced on.
-4. **TTY Check**: If output is redirected (e.g. `python script.py > output.txt`), colors are disabled to avoid writing raw ANSI codes into text files.
+2. **`NO_COLOR` Variable**: TermTint respects `NO_COLOR` in automatic mode ([no-color.org](https://no-color.org)).
+3. **`FORCE_COLOR` Variable**: If `FORCE_COLOR=1`, colors are forced on in automatic mode.
+4. **Destination Stream & TTY Check**: If output is redirected (e.g. `python script.py > output.txt`) or a file-like stream is supplied (`file=f`), ANSI escape sequences are avoided automatically.
 5. **Dumb Terminal Check**: If `TERM=dumb`, colors are disabled.
 
 ---
@@ -171,6 +171,8 @@ On Windows 10 and 11, TermTint automatically enables Virtual Terminal (VT) proce
 
 ## Colorama Comparison
 
+TermTint is a focused, lightweight alternative for developers who primarily need simple colored terminal output, whereas Colorama provides broader historical ANSI translation.
+
 | Feature / Goal | TermTint | Colorama |
 | :--- | :--- | :--- |
 | **Runtime Dependencies** | **Zero (Standard Library)** | External package |
@@ -178,7 +180,7 @@ On Windows 10 and 11, TermTint automatically enables Virtual Terminal (VT) proce
 | **API Style** | Clean functional API | Module constants & stream wrappers |
 | **`stdout` Patching** | Avoided (pure string format) | Global stream wrapping option |
 | **Modern Windows 10/11** | Native VT API | Supported |
-| **`NO_COLOR` Standard** | Supported | Not native |
+| **`NO_COLOR` Standard** | Supported in auto mode | Not native |
 
 ---
 
@@ -199,8 +201,8 @@ If you require full TUI widgets or complex terminal graphics, consider tools lik
 Set up TermTint locally:
 
 ```bash
-git clone https://github.com/termtint/termtint.git
-cd termtint
+git clone https://github.com/hasheramin5-cyber/TermTint.git
+cd TermTint
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\Activate.ps1
 pip install -e ".[dev]"
@@ -215,7 +217,7 @@ pytest
 # Run linter
 ruff check .
 
-# Run benchmarks
+# Run micro-benchmarks
 python benchmarks/benchmark.py
 ```
 

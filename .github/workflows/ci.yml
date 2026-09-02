@@ -8,12 +8,20 @@ on:
 
 jobs:
   test:
-    name: Test & Lint (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    name: Test & Lint (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        exclude:
+          - os: windows-latest
+            python-version: "3.10"
+          - os: windows-latest
+            python-version: "3.11"
+          - os: windows-latest
+            python-version: "3.13"
 
     steps:
       - name: Checkout repository

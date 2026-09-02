@@ -10,8 +10,8 @@ This guide explains how to set up your local development environment, run tests,
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/termtint.git
-cd termtint
+git clone https://github.com/hasheramin5-cyber/TermTint.git
+cd TermTint
 
 # Create virtual environment
 python -m venv .venv
