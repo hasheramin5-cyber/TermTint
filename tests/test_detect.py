@@ -53,6 +53,7 @@ def test_no_color_environment(monkeypatch):
 
 
 def test_force_color_environment(monkeypatch):
+    monkeypatch.delenv("NO_COLOR", raising=False)
     monkeypatch.setenv("FORCE_COLOR", "1")
     reset_color_state()
     assert should_color() is True
@@ -76,6 +77,8 @@ def test_term_dumb_environment(monkeypatch):
 
 
 def test_windows_environment_detection(monkeypatch):
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setenv("TERM", "xterm-256color")
     monkeypatch.setattr(sys, "platform", "win32")
     mock_tty = MagicMock()
     mock_tty.isatty.return_value = True

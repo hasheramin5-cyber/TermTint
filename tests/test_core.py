@@ -128,8 +128,11 @@ def test_convenience_print_custom_file_auto_mode():
     assert buf.getvalue() == "buffer output"
 
 
-def test_colored_with_explicit_stream():
+def test_colored_with_explicit_stream(monkeypatch):
     reset_color_state()
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setenv("TERM", "xterm-256color")
+
     non_tty_buf = io.StringIO()
     assert colored("test", "red", stream=non_tty_buf) == "test"
 
