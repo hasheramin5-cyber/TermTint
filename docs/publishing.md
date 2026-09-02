@@ -19,7 +19,7 @@ Trusted Publishing uses OpenID Connect (OIDC) tokens issued by GitHub Actions to
    - **PyPI Project Name**: `termtint`
    - **Owner**: `hasheramin5-cyber`
    - **Repository name**: `TermTint`
-   - **Workflow name**: `publish.yml`
+   - **Workflow name**: `.github/workflows/publish.yml`
    - **Environment name**: `pypi`
 5. Click **Add Publisher**.
 
