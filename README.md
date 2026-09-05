@@ -35,13 +35,13 @@ print(colored("Success!", "green"))
 
 ## Features
 
-- ⚡ **Zero Runtime Dependencies**: Uses only the Python standard library.
-- 🎨 **8 Foreground Colors & 4 Text Styles**: Simple, predictable ANSI styling.
-- 🪟 **Modern Windows Support**: Native Virtual Terminal support on Windows 10/11.
-- 🚫 **NO_COLOR Compliant**: TermTint respects `NO_COLOR` in automatic mode.
-- 📄 **Redirect & Stream Aware**: TermTint automatically avoids adding ANSI escape sequences when output is redirected to a file or pipe.
-- 🛠️ **Convenience Helpers**: Direct `print_green()`, `print_red()`, and other function helpers.
-- 🪶 **Ultra-Lightweight**: Minimal runtime overhead and simple code structure.
+- **Zero Runtime Dependencies**: Uses only the Python standard library.
+- **8 Foreground Colors & 4 Text Styles**: Simple, predictable ANSI styling.
+- **Modern Windows Support**: Native Virtual Terminal support on Windows 10/11.
+- **NO_COLOR Compliant**: TermTint respects `NO_COLOR` in automatic mode.
+- **Redirect & Stream Aware**: TermTint automatically avoids adding ANSI escape sequences when output is redirected to a file or pipe.
+- **Convenience Helpers**: Direct `print_green()`, `print_red()`, and other function helpers.
+- **Ultra-Lightweight**: Minimal runtime overhead and simple code structure.
 
 ---
 
