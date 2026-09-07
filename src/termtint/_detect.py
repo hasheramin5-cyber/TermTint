@@ -92,7 +92,10 @@ def _detect_color_support(stream: TextIO) -> bool:
         return True
 
     # 3. Check stream TTY capability
-    if not hasattr(stream, "isatty") or not stream.isatty():
+    try:
+        if not hasattr(stream, "isatty") or not stream.isatty():
+            return False
+    except Exception:
         return False
 
     # 4. Check TERM environment variable

@@ -156,9 +156,28 @@ def test_explicit_overrides_with_custom_stream():
     assert colored("test", "green", stream=mock_tty) == "test"
 
 
+def test_colored_with_closed_stream():
+    reset_color_state()
+    closed_buf = io.StringIO()
+    closed_buf.close()
+    # isatty() on a closed stream raises ValueError; colored should handle gracefully
+    assert colored("hello", "green", stream=closed_buf) == "hello"
+
+
+def test_convenience_print_auto_mode_non_tty(capsys, monkeypatch):
+    reset_color_state()
+    monkeypatch.delenv("FORCE_COLOR", raising=False)
+    monkeypatch.delenv("CLICOLOR_FORCE", raising=False)
+    # capsys captures stdout as non-TTY, so in AUTO mode output is plain text
+    print_red("uncolored red")
+    captured = capsys.readouterr()
+    assert captured.out == "uncolored red\n"
+
+
 def test_package_exports():
     assert termtint.colored is colored
     assert termtint.enable_color is enable_color
     assert termtint.disable_color is disable_color
     assert termtint.print_red is print_red
     assert termtint.__version__ == "0.1.0"
+

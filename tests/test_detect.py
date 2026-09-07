@@ -130,3 +130,78 @@ def test_enable_vt_mode_windows_success(monkeypatch):
     monkeypatch.setattr(ctypes, "byref", lambda x: x)
 
     assert enable_vt_mode() is True
+
+
+def test_cached_auto_result_sys_stdout(monkeypatch):
+    reset_color_state()
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setenv("FORCE_COLOR", "1")
+    # First call caches the auto result for sys.stdout
+    assert should_color() is True
+    # Second call hits the cached branch
+    assert should_color() is True
+
+
+def test_detect_non_windows_platform(monkeypatch):
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.delenv("FORCE_COLOR", raising=False)
+    monkeypatch.delenv("CLICOLOR_FORCE", raising=False)
+    monkeypatch.setenv("TERM", "xterm-256color")
+    monkeypatch.setattr(sys, "platform", "linux")
+    mock_tty = MagicMock()
+    mock_tty.isatty.return_value = True
+    assert _detect_color_support(mock_tty) is True
+
+
+def test_enable_vt_mode_windows_invalid_handles(monkeypatch):
+    import ctypes
+
+    monkeypatch.setattr(sys, "platform", "win32")
+    mock_kernel32 = MagicMock()
+    mock_kernel32.GetStdHandle.return_value = 0
+    mock_windll = MagicMock()
+    mock_windll.kernel32 = mock_kernel32
+    monkeypatch.setattr(ctypes, "windll", mock_windll, raising=False)
+
+    assert enable_vt_mode() is False
+
+    mock_kernel32.GetStdHandle.return_value = -1
+    assert enable_vt_mode() is False
+
+
+def test_enable_vt_mode_windows_get_console_mode_failure(monkeypatch):
+    import ctypes
+
+    monkeypatch.setattr(sys, "platform", "win32")
+    mock_kernel32 = MagicMock()
+    mock_kernel32.GetStdHandle.return_value = 1
+    mock_kernel32.GetConsoleMode.return_value = False
+    mock_windll = MagicMock()
+    mock_windll.kernel32 = mock_kernel32
+    mock_wintypes = MagicMock()
+    monkeypatch.setattr(ctypes, "windll", mock_windll, raising=False)
+    monkeypatch.setattr(ctypes, "wintypes", mock_wintypes, raising=False)
+    monkeypatch.setitem(sys.modules, "ctypes.wintypes", mock_wintypes)
+    monkeypatch.setattr(ctypes, "byref", lambda x: x)
+
+    assert enable_vt_mode() is False
+
+
+def test_enable_vt_mode_windows_set_console_mode_failure(monkeypatch):
+    import ctypes
+
+    monkeypatch.setattr(sys, "platform", "win32")
+    mock_kernel32 = MagicMock()
+    mock_kernel32.GetStdHandle.return_value = 1
+    mock_kernel32.GetConsoleMode.return_value = True
+    mock_kernel32.SetConsoleMode.return_value = False
+    mock_windll = MagicMock()
+    mock_windll.kernel32 = mock_kernel32
+    mock_wintypes = MagicMock()
+    monkeypatch.setattr(ctypes, "windll", mock_windll, raising=False)
+    monkeypatch.setattr(ctypes, "wintypes", mock_wintypes, raising=False)
+    monkeypatch.setitem(sys.modules, "ctypes.wintypes", mock_wintypes)
+    monkeypatch.setattr(ctypes, "byref", lambda x: x)
+
+    assert enable_vt_mode() is False
+
