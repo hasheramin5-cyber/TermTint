@@ -42,17 +42,17 @@ Trusted Publishing uses OpenID Connect (OIDC) tokens issued by GitHub Actions to
 
 To publish a new version of TermTint to PyPI:
 
-1. **Update Version**: Update `version = "0.1.0"` in `pyproject.toml` and `__version__ = "0.1.0"` in `src/termtint/__init__.py`.
+1. **Update Version**: Update `version = "0.2.0"` in `pyproject.toml` and `__version__ = "0.2.0"` in `src/termtint/__init__.py`.
 2. **Commit & Push**:
    ```bash
    git add pyproject.toml src/termtint/__init__.py
-   git commit -m "chore: bump version to 0.1.0"
+   git commit -m "chore: bump version to 0.2.0"
    git push origin main
    ```
 3. **Create GitHub Release**:
    - Go to your GitHub repository -> **Releases** -> **Draft a new release**.
-   - Choose or create a tag (e.g. `v0.1.0`).
-   - Title the release (e.g. `v0.1.0`).
+   - Choose or create a tag (e.g. `v0.2.0`).
+   - Title the release (e.g. `v0.2.0`).
    - Click **Publish release**.
 
 4. **Automated Publishing**:

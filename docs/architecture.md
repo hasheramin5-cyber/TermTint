@@ -60,7 +60,7 @@ Return Styled String
 ## Module Responsibilities
 
 ### `core.py`
-Defines ANSI lookup tables for foreground colors and styles. Exposes `colored()`, state toggles (`enable_color()`, `disable_color()`), and `print_*()` helper functions. Inspects destination streams to pass context down to detection.
+Defines ANSI lookup tables for foreground colors and styles, along with True Color (RGB) and 256-color generators. Exposes `colored()`, state toggles (`enable_color()`, `disable_color()`), and `print_*()` helper functions (including `print_rgb()` and `print_256()`). Inspects destination streams to pass context down to detection.
 
 ### `_detect.py`
 Encapsulates environment inspection (`NO_COLOR` in automatic mode, `FORCE_COLOR`, `TERM`), target stream TTY checks (`isatty()`), and state caching to minimize runtime overhead.

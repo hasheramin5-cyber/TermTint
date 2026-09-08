@@ -35,7 +35,7 @@ def main() -> None:
     print("| Test Case                           | Total Time |     Throughput |")
     print("|-------------------------------------|------------|----------------|")
 
-    # 1. TermTint colored()
+    # 1. TermTint colored() named color
     benchmark(
         "TermTint colored('text', 'green')",
         lambda: colored("hello world", "green"),
@@ -44,12 +44,26 @@ def main() -> None:
 
     # 2. TermTint colored() with style
     benchmark(
-        "TermTint colored(..., style='bright')",
-        lambda: colored("hello world", "green", style="bright"),
+        "TermTint colored(..., style='bold')",
+        lambda: colored("hello world", "green", style="bold"),
         iterations,
     )
 
-    # 3. Direct raw ANSI string baseline
+    # 3. TermTint colored() with RGB
+    benchmark(
+        "TermTint colored(..., rgb=(255, 80, 80))",
+        lambda: colored("hello world", rgb=(255, 80, 80)),
+        iterations,
+    )
+
+    # 4. TermTint colored() with 256-color
+    benchmark(
+        "TermTint colored(..., color256=196)",
+        lambda: colored("hello world", color256=196),
+        iterations,
+    )
+
+    # 5. Direct raw ANSI string baseline
     benchmark(
         "Raw ANSI string baseline",
         lambda: "\033[32mhello world\033[0m",
