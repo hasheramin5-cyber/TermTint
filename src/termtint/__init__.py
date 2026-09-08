@@ -5,18 +5,20 @@ from termtint.core import (
     disable_color,
     enable_color,
     is_color_enabled,
+    print_256,
     print_black,
     print_blue,
     print_cyan,
     print_green,
     print_magenta,
     print_red,
+    print_rgb,
     print_white,
     print_yellow,
     reset_color_state,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "colored",
@@ -32,5 +34,7 @@ __all__ = [
     "print_magenta",
     "print_cyan",
     "print_white",
+    "print_rgb",
+    "print_256",
     "__version__",
 ]

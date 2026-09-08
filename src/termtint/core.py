@@ -26,42 +26,147 @@ COLORS: dict[str, str] = {
 STYLES: dict[str, str] = {
     "normal": "0",
     "bright": "1",
+    "bold": "1",
     "dim": "2",
+    "italic": "3",
     "underline": "4",
+    "reverse": "7",
+    "strikethrough": "9",
 }
 
 RESET_CODE: str = "\033[0m"
 
 
+def _validate_rgb(rgb: Any) -> str:
+    """Validate RGB tuple and return ANSI SGR color code string.
+
+    Args:
+        rgb: Sequence of 3 integer components (0-255).
+
+    Returns:
+        str: SGR parameter string '38;2;R;G;B'.
+
+    Raises:
+        TypeError: If rgb or any component is not an integer or is a boolean.
+        ValueError: If rgb does not have 3 items or values are out of 0-255 range.
+    """
+    if isinstance(rgb, (bool, bytes, str)):
+        raise TypeError(
+            f"RGB must be a tuple or list of 3 integers, got {type(rgb).__name__}."
+        )
+    try:
+        rgb_list = list(rgb)
+    except TypeError:
+        raise TypeError(
+            f"RGB must be a sequence of 3 integers, got {type(rgb).__name__}."
+        )
+
+    if len(rgb_list) != 3:
+        raise ValueError(
+            f"RGB must contain exactly 3 components (r, g, b), got {len(rgb_list)}."
+        )
+
+    for i, c in enumerate(rgb_list):
+        if isinstance(c, bool) or not isinstance(c, int):
+            tname = type(c).__name__
+            raise TypeError(
+                f"RGB component at index {i} must be an integer, got {tname} ({c!r})."
+            )
+        if not (0 <= c <= 255):
+            raise ValueError(
+                f"RGB component at index {i} must be between 0 and 255, got {c}."
+            )
+
+    r, g, b = rgb_list
+    return f"38;2;{r};{g};{b}"
+
+
+def _validate_color256(color256: Any) -> str:
+    """Validate 256-color index and return ANSI SGR color code string.
+
+    Args:
+        color256: Integer color code (0-255).
+
+    Returns:
+        str: SGR parameter string '38;5;N'.
+
+    Raises:
+        TypeError: If color256 is not an integer or is a boolean.
+        ValueError: If color256 is out of 0-255 range.
+    """
+    if isinstance(color256, bool) or not isinstance(color256, int):
+        tname = type(color256).__name__
+        raise TypeError(
+            f"color256 must be an integer, got {tname} ({color256!r})."
+        )
+    if not (0 <= color256 <= 255):
+        raise ValueError(
+            f"color256 must be between 0 and 255, got {color256}."
+        )
+
+    return f"38;5;{color256}"
+
+
 def colored(
     text: Any,
-    color: str,
+    color: Optional[str] = None,
     style: Optional[str] = None,
+    rgb: Optional[tuple[int, int, int]] = None,
+    color256: Optional[int] = None,
     stream: Optional[TextIO] = None,
 ) -> str:
     """Format text with ANSI escape codes for specified color and optional style.
 
+    Supports named colors, 24-bit True Color (RGB), and 256-color ANSI.
+
     Args:
         text: Any object to be converted to a string and styled.
         color: Name of the foreground color (black, red, green, yellow, etc.).
-        style: Optional style (normal, bright, dim, underline).
+        style: Optional style (normal, bold, bright, dim, italic, underline, etc.).
+        rgb: Optional tuple/list of 3 integers (r, g, b) between 0 and 255.
+        color256: Optional integer color code between 0 and 255.
         stream: Optional destination stream for color capability detection.
 
     Returns:
         str: ANSI formatted string when color is enabled, plain text otherwise.
 
     Raises:
-        ValueError: If an unsupported color or style is specified.
+        ValueError: If invalid color/style or conflicting color options are specified.
+        TypeError: If invalid types are supplied for color, rgb, or color256.
     """
-    color_lower = str(color).lower()
-    if color_lower not in COLORS:
-        valid_colors = ", ".join(sorted(COLORS.keys()))
+    color_specs = sum(x is not None for x in (color, rgb, color256))
+    if color_specs == 0:
         raise ValueError(
-            f"Invalid color '{color}'. Supported colors are: {valid_colors}"
+            "A color must be specified using 'color', 'rgb', or 'color256'."
+        )
+    if color_specs > 1:
+        raise ValueError(
+            "Only one of 'color', 'rgb', or 'color256' may be specified."
         )
 
+    if color is not None:
+        if isinstance(color, bool) or not isinstance(color, str):
+            raise TypeError(
+                f"Named color must be a string, got {type(color).__name__}."
+            )
+        color_lower = color.lower()
+        if color_lower not in COLORS:
+            valid_colors = ", ".join(sorted(COLORS.keys()))
+            raise ValueError(
+                f"Invalid color '{color}'. Supported colors are: {valid_colors}"
+            )
+        color_code = COLORS[color_lower]
+    elif rgb is not None:
+        color_code = _validate_rgb(rgb)
+    else:
+        color_code = _validate_color256(color256)
+
     if style is not None:
-        style_lower = str(style).lower()
+        if isinstance(style, bool) or not isinstance(style, str):
+            raise TypeError(
+                f"Style must be a string, got {type(style).__name__}."
+            )
+        style_lower = style.lower()
         if style_lower not in STYLES:
             valid_styles = ", ".join(sorted(STYLES.keys()))
             raise ValueError(
@@ -75,7 +180,6 @@ def colored(
     if not should_color(stream=stream):
         return text_str
 
-    color_code = COLORS[color_lower]
     if style_lower != "normal":
         style_code = STYLES[style_lower]
         prefix = f"\033[{style_code};{color_code}m"
@@ -124,7 +228,59 @@ def _print_color(
     """Internal helper to print colored values."""
     target = file if file is not None else sys.stdout
     text = sep.join(str(v) for v in values)
-    output = colored(text, color, style=style, stream=target)
+    output = colored(text, color=color, style=style, stream=target)
+    print(output, end=end, file=target, flush=flush)
+
+
+def print_rgb(
+    rgb: tuple[int, int, int],
+    *values: Any,
+    style: Optional[str] = None,
+    sep: str = " ",
+    end: str = "\n",
+    file: Optional[TextIO] = None,
+    flush: bool = False,
+) -> None:
+    """Print text formatted with 24-bit True Color (RGB).
+
+    Args:
+        rgb: Sequence of 3 integers (r, g, b) between 0 and 255.
+        *values: Values to be printed.
+        style: Optional text style (normal, bold, bright, dim, italic, etc.).
+        sep: String inserted between values, default a space.
+        end: String appended after the last value, default a newline.
+        file: A file-like object (stream); defaults to sys.stdout.
+        flush: Whether to forcibly flush the stream.
+    """
+    target = file if file is not None else sys.stdout
+    text = sep.join(str(v) for v in values)
+    output = colored(text, rgb=rgb, style=style, stream=target)
+    print(output, end=end, file=target, flush=flush)
+
+
+def print_256(
+    color256: int,
+    *values: Any,
+    style: Optional[str] = None,
+    sep: str = " ",
+    end: str = "\n",
+    file: Optional[TextIO] = None,
+    flush: bool = False,
+) -> None:
+    """Print text formatted with 256-color ANSI code.
+
+    Args:
+        color256: Integer color code between 0 and 255.
+        *values: Values to be printed.
+        style: Optional text style (normal, bold, bright, dim, italic, etc.).
+        sep: String inserted between values, default a space.
+        end: String appended after the last value, default a newline.
+        file: A file-like object (stream); defaults to sys.stdout.
+        flush: Whether to forcibly flush the stream.
+    """
+    target = file if file is not None else sys.stdout
+    text = sep.join(str(v) for v in values)
+    output = colored(text, color256=color256, style=style, stream=target)
     print(output, end=end, file=target, flush=flush)
 
 

@@ -87,6 +87,6 @@ Artifacts will be produced in the `dist/` directory.
 To test installing the wheel locally into a fresh environment:
 
 ```bash
-pip install dist/termtint-0.1.0-py3-none-any.whl
+pip install dist/termtint-0.2.0-py3-none-any.whl
 python -c "from termtint import colored; print(colored('Local build working!', 'green'))"
 ```

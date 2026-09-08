@@ -6,6 +6,7 @@ This guide provides real-world examples and recipes for incorporating **TermTint
 
 ## Basic Formatting
 
+### Standard Named Colors
 To format text, pass string content and a supported color to `colored()`:
 
 ```python
@@ -18,6 +19,26 @@ print(colored("Error!", "red"))
 print(colored("Info:", "cyan"))
 ```
 
+### True Color (RGB)
+For 24-bit True Color, supply an `(r, g, b)` tuple with values from 0 to 255 to `rgb=`:
+
+```python
+from termtint import colored
+
+print(colored("Custom coral", rgb=(255, 127, 80)))
+print(colored("Deep sea blue", rgb=(0, 105, 148)))
+```
+
+### 256-Color ANSI
+For 8-bit ANSI extended colors, pass an integer from 0 to 255 to `color256=`:
+
+```python
+from termtint import colored
+
+print(colored("Bright orange", color256=208))
+print(colored("Vibrant purple", color256=141))
+```
+
 ---
 
 ## Adding Styles
@@ -27,14 +48,30 @@ Styles enhance visual hierarchy in CLI outputs:
 ```python
 from termtint import colored
 
-# Bright / Bold
-print(colored("CRITICAL ERROR", "red", style="bright"))
+# Bold / Bright
+print(colored("CRITICAL ERROR", "red", style="bold"))
 
 # Dim / De-emphasized
 print(colored("Debug log line 42...", "white", style="dim"))
 
+# Italic
+print(colored("Note: see documentation below", "cyan", style="italic"))
+
 # Underline
 print(colored("https://example.com/docs", "blue", style="underline"))
+
+# Reverse / Inverted
+print(colored(" STATUS: ACTIVE ", "yellow", style="reverse"))
+
+# Strikethrough
+print(colored("Deprecated v0.1 syntax", "white", style="strikethrough"))
+```
+
+Styles combine seamlessly with RGB and 256-color options:
+
+```python
+print(colored("Bold truecolor", rgb=(255, 69, 0), style="bold"))
+print(colored("Underlined 256", color256=45, style="underline"))
 ```
 
 ---

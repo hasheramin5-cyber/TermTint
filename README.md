@@ -36,11 +36,12 @@ print(colored("Success!", "green"))
 ## Features
 
 - **Zero Runtime Dependencies**: Uses only the Python standard library.
-- **8 Foreground Colors & 4 Text Styles**: Simple, predictable ANSI styling.
+- **Named, RGB & 256 Colors**: 8 standard colors, 24-bit True Color (`rgb=(r, g, b)`), and 256-color ANSI (`color256=n`).
+- **8 Text Styles**: `normal`, `bold`, `bright`, `dim`, `italic`, `underline`, `reverse`, and `strikethrough`.
 - **Modern Windows Support**: Native Virtual Terminal support on Windows 10/11.
 - **NO_COLOR Compliant**: TermTint respects `NO_COLOR` in automatic mode.
 - **Redirect & Stream Aware**: TermTint automatically avoids adding ANSI escape sequences when output is redirected to a file or pipe.
-- **Convenience Helpers**: Direct `print_green()`, `print_red()`, and other function helpers.
+- **Convenience Helpers**: Direct `print_green()`, `print_rgb()`, `print_256()`, and other function helpers.
 - **Ultra-Lightweight**: Minimal runtime overhead and simple code structure.
 
 ---
@@ -58,22 +59,33 @@ pip install termtint
 ## Quick Start
 
 ```python
-from termtint import colored, print_green, print_red, print_yellow
+from termtint import colored, print_green, print_red, print_rgb, print_256
 
-# Simple string coloring
+# Standard named colors
 print(colored("Operation succeeded", "green"))
-print(colored("Disk space low", "yellow", style="bright"))
+print(colored("Disk space low", "yellow", style="bold"))
 print(colored("Database error", "red", style="underline"))
+
+# 24-bit True Color (RGB)
+print(colored("Custom coral text", rgb=(255, 127, 80)))
+print(colored("Styled sky blue", rgb=(135, 206, 235), style="italic"))
+
+# 256-color ANSI
+print(colored("Vibrant orange", color256=208))
+print(colored("Hot pink", color256=198, style="bold"))
 
 # Convenience print functions
 print_green("System online")
-print_yellow("Deprecated feature warning")
-print_red("Fatal crash occurred!")
+print_red("Fatal crash occurred!", style="bold")
+print_rgb((255, 165, 0), "Warning: battery at 15%")
+print_256(196, "Critical temperature threshold exceeded")
 ```
 
 ---
 
 ## Supported Colors
+
+### 1. Named Terminal Colors
 
 TermTint supports 8 standard terminal foreground colors:
 
@@ -90,18 +102,45 @@ TermTint supports 8 standard terminal foreground colors:
 
 Invalid color names raise a `ValueError` with a helpful error message.
 
+### 2. RGB / True Color (24-bit)
+
+Pass an `(r, g, b)` tuple with values from 0 to 255 to `rgb=`:
+
+```python
+print(colored("Custom purple", rgb=(138, 43, 226)))
+print(colored("Sunset orange", rgb=(255, 69, 0), style="bold"))
+```
+
+### 3. 256-Color ANSI
+
+Pass an integer color index (0 to 255) to `color256=`:
+
+```python
+print(colored("Bright red", color256=196))
+print(colored("Electric blue", color256=33, style="underline"))
+```
+
+> [!NOTE]
+> `color`, `rgb`, and `color256` are mutually exclusive. Specify exactly one color source per call.
+
 ---
 
 ## Supported Styles
 
-TermTint supports 4 essential text styles:
+TermTint supports 8 standard text styles:
 
 | Style | Description | Code Example |
 | :--- | :--- | :--- |
 | `normal` | Default normal weight | `colored("text", "green", style="normal")` |
-| `bright` | Bold / bright weight | `colored("text", "green", style="bright")` |
-| `dim` | Faded / lower intensity | `colored("text", "white", style="dim")` |
-| `underline` | Underlined text | `colored("text", "blue", style="underline")` |
+| `bold` | Bold weight (ANSI 1) | `colored("text", "green", style="bold")` |
+| `bright` | Bright / bold weight (ANSI 1) | `colored("text", "green", style="bright")` |
+| `dim` | Faded / lower intensity (ANSI 2) | `colored("text", "white", style="dim")` |
+| `italic` | Italic text (ANSI 3) | `colored("text", "cyan", style="italic")` |
+| `underline` | Underlined text (ANSI 4) | `colored("text", "blue", style="underline")` |
+| `reverse` | Inverted foreground/background (ANSI 7) | `colored("text", "yellow", style="reverse")` |
+| `strikethrough` | Strikethrough text (ANSI 9) | `colored("text", "red", style="strikethrough")` |
+
+`bold` and `bright` map to the same ANSI escape code (1). All styles combine seamlessly with named colors, RGB, and 256-color output.
 
 ---
 
@@ -119,11 +158,15 @@ from termtint import (
     print_magenta,
     print_cyan,
     print_white,
+    print_rgb,
+    print_256,
 )
 
 print_green("Success message")
-print_red("Error message", style="bright")
+print_red("Error message", style="bold")
 print_yellow("Warning message", style="underline")
+print_rgb((100, 200, 255), "Custom RGB notice")
+print_256(214, "256-color amber alert")
 ```
 
 All convenience functions support standard Python `print()` keyword arguments: `sep`, `end`, `file`, and `flush`.
