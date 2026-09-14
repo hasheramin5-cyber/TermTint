@@ -16,12 +16,21 @@ from termtint.core import (
     print_white,
     print_yellow,
     reset_color_state,
+    styled,
+)
+from termtint.theme import (
+    DEFAULT_THEME,
+    Theme,
+    get_theme,
+    reset_theme,
+    set_theme,
 )
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "colored",
+    "styled",
     "enable_color",
     "disable_color",
     "is_color_enabled",
@@ -36,5 +45,10 @@ __all__ = [
     "print_white",
     "print_rgb",
     "print_256",
+    "Theme",
+    "DEFAULT_THEME",
+    "get_theme",
+    "set_theme",
+    "reset_theme",
     "__version__",
 ]

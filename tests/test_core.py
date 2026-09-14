@@ -433,11 +433,18 @@ def test_rgb_and_256_enable_disable_state():
 
 def test_package_exports():
     assert termtint.colored is colored
+    assert termtint.styled is termtint.core.styled
     assert termtint.enable_color is enable_color
     assert termtint.disable_color is disable_color
     assert termtint.print_red is print_red
     assert termtint.print_rgb is print_rgb
     assert termtint.print_256 is print_256
-    assert termtint.__version__ == "0.2.0"
+    assert termtint.Theme is termtint.theme.Theme
+    assert termtint.DEFAULT_THEME is termtint.theme.DEFAULT_THEME
+    assert termtint.get_theme is termtint.theme.get_theme
+    assert termtint.set_theme is termtint.theme.set_theme
+    assert termtint.reset_theme is termtint.theme.reset_theme
+    assert termtint.__version__ == "0.3.0"
+
 
 
