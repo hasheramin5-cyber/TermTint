@@ -23,12 +23,14 @@ If you want colored output, writing raw ANSI escape sequences manually can quick
 print("\033[32mSuccess!\033[0m")
 ```
 
-**TermTint** solves this by providing a clean, simple, zero-dependency interface for colored terminal text without the overhead of heavy CLI frameworks:
+**TermTint** solves this by providing a clean, simple, zero-dependency interface for colored and styled terminal text without the overhead of heavy CLI frameworks:
 
 ```python
-from termtint import colored
+from termtint import colored, styled
 
 print(colored("Success!", "green"))
+print(styled("Alert!", color="red", style=["bold", "underline"]))
+print(styled("Deployed", theme="success"))
 ```
 
 ---
@@ -36,6 +38,8 @@ print(colored("Success!", "green"))
 ## Features
 
 - **Zero Runtime Dependencies**: Uses only the Python standard library.
+- **Fluent Styling (`styled`)**: Flexible formatting with single or multiple styles (`["bold", "underline"]`).
+- **Semantic Themes (`Theme`)**: Role-based theming (`"success"`, `"error"`, `"warning"`, `"info"`, `"muted"`, `"brand"`) and custom application themes.
 - **Named, RGB & 256 Colors**: 8 standard colors, 24-bit True Color (`rgb=(r, g, b)`), and 256-color ANSI (`color256=n`).
 - **8 Text Styles**: `normal`, `bold`, `bright`, `dim`, `italic`, `underline`, `reverse`, and `strikethrough`.
 - **Modern Windows Support**: Native Virtual Terminal support on Windows 10/11.
@@ -59,26 +63,100 @@ pip install termtint
 ## Quick Start
 
 ```python
-from termtint import colored, print_green, print_red, print_rgb, print_256
+from termtint import colored, styled, Theme, print_green, print_red, print_rgb, print_256
 
-# Standard named colors
+# 1. Fluent styling with styled()
+print(styled("Header", style="bold"))
+print(styled("Warning!", color="yellow", style="bold"))
+print(styled("Accent", rgb=(255, 128, 0), style="italic"))
+print(styled("Badge", color256=198, style=["bold", "reverse"]))
+print(styled("Alert", color="red", style=("bold", "underline")))
+print(styled("Success", theme="success"))
+
+# 2. Classic colored() API
 print(colored("Operation succeeded", "green"))
-print(colored("Disk space low", "yellow", style="bold"))
-print(colored("Database error", "red", style="underline"))
-
-# 24-bit True Color (RGB)
 print(colored("Custom coral text", rgb=(255, 127, 80)))
-print(colored("Styled sky blue", rgb=(135, 206, 235), style="italic"))
-
-# 256-color ANSI
 print(colored("Vibrant orange", color256=208))
-print(colored("Hot pink", color256=198, style="bold"))
 
-# Convenience print functions
+# 3. Role-based Theme API
+custom_theme = Theme({
+    "success": {"color": "green", "style": "bold"},
+    "brand": {"rgb": (0, 122, 255), "style": "bold"},
+    "notice": {"color256": 214, "style": "italic"},
+})
+custom_theme.print("System online", "brand")
+custom_theme.print("Backup complete", "success")
+
+# 4. Convenience print functions
 print_green("System online")
 print_red("Fatal crash occurred!", style="bold")
 print_rgb((255, 165, 0), "Warning: battery at 15%")
 print_256(196, "Critical temperature threshold exceeded")
+```
+
+---
+
+## Fluent Styling with `styled()`
+
+The `styled()` function provides a unified entry point for all formatting:
+
+```python
+from termtint import styled
+
+# Single or multiple styles
+styled("Single style", style="bold")
+styled("Multiple styles list", color="cyan", style=["bold", "underline"])
+styled("Multiple styles tuple", color="red", style=("bold", "reverse"))
+styled("Comma-separated string", color="green", style="bold, italic")
+
+# Fallback with no styling returns plain text
+styled("Plain text")  # -> "Plain text"
+```
+
+---
+
+## Theme System
+
+TermTint includes role-based theming so you can style messages by purpose rather than hardcoded colors.
+
+### Built-in Roles
+
+Use `styled(..., theme="role")` to tap into the active theme:
+
+```python
+from termtint import styled
+
+print(styled("Task completed successfully", theme="success"))  # green + bold
+print(styled("Database error", theme="error"))                # red + bold
+print(styled("Low disk space", theme="warning"))              # yellow
+print(styled("Syncing data...", theme="info"))                 # cyan + italic
+print(styled("2026-09-14 12:00:00", theme="muted"))           # dim
+print(styled("Acme CLI", theme="brand"))                      # RGB blue + bold
+```
+
+### Custom Themes and Extension
+
+```python
+from termtint import Theme, set_theme, reset_theme
+
+app_theme = Theme({
+    "success": {"color": "green", "style": "bold"},
+    "danger": {"color": "red", "style": ["bold", "underline"]},
+    "brand": {"rgb": (120, 80, 255), "style": "bold"},
+})
+
+# Print directly with the theme
+app_theme.print("Application ready", "brand")
+
+# Extend without mutating the original
+extended = app_theme.extend(
+    accent={"color256": 208, "style": "italic"}
+)
+
+# Or set globally
+set_theme(app_theme)
+print(styled("App startup", theme="brand"))
+reset_theme()  # Restore default theme
 ```
 
 ---
@@ -108,7 +186,7 @@ Pass an `(r, g, b)` tuple with values from 0 to 255 to `rgb=`:
 
 ```python
 print(colored("Custom purple", rgb=(138, 43, 226)))
-print(colored("Sunset orange", rgb=(255, 69, 0), style="bold"))
+print(styled("Sunset orange", rgb=(255, 69, 0), style="bold"))
 ```
 
 ### 3. 256-Color ANSI
@@ -117,11 +195,11 @@ Pass an integer color index (0 to 255) to `color256=`:
 
 ```python
 print(colored("Bright red", color256=196))
-print(colored("Electric blue", color256=33, style="underline"))
+print(styled("Electric blue", color256=33, style="underline"))
 ```
 
 > [!NOTE]
-> `color`, `rgb`, and `color256` are mutually exclusive. Specify exactly one color source per call.
+> `color`, `rgb`, and `color256` are mutually exclusive. Specify at most one color source per call.
 
 ---
 
@@ -131,22 +209,22 @@ TermTint supports 8 standard text styles:
 
 | Style | Description | Code Example |
 | :--- | :--- | :--- |
-| `normal` | Default normal weight | `colored("text", "green", style="normal")` |
-| `bold` | Bold weight (ANSI 1) | `colored("text", "green", style="bold")` |
-| `bright` | Bright / bold weight (ANSI 1) | `colored("text", "green", style="bright")` |
-| `dim` | Faded / lower intensity (ANSI 2) | `colored("text", "white", style="dim")` |
-| `italic` | Italic text (ANSI 3) | `colored("text", "cyan", style="italic")` |
-| `underline` | Underlined text (ANSI 4) | `colored("text", "blue", style="underline")` |
-| `reverse` | Inverted foreground/background (ANSI 7) | `colored("text", "yellow", style="reverse")` |
-| `strikethrough` | Strikethrough text (ANSI 9) | `colored("text", "red", style="strikethrough")` |
+| `normal` | Default normal weight | `styled("text", style="normal")` |
+| `bold` | Bold weight (ANSI 1) | `styled("text", style="bold")` |
+| `bright` | Bright / bold weight (ANSI 1) | `styled("text", style="bright")` |
+| `dim` | Faded / lower intensity (ANSI 2) | `styled("text", style="dim")` |
+| `italic` | Italic text (ANSI 3) | `styled("text", style="italic")` |
+| `underline` | Underlined text (ANSI 4) | `styled("text", style="underline")` |
+| `reverse` | Inverted foreground/background (ANSI 7) | `styled("text", style="reverse")` |
+| `strikethrough` | Strikethrough text (ANSI 9) | `styled("text", style="strikethrough")` |
 
-`bold` and `bright` map to the same ANSI escape code (1). All styles combine seamlessly with named colors, RGB, and 256-color output.
+`bold` and `bright` map to the same ANSI escape code (1). All styles combine seamlessly with named colors, RGB, 256-color output, and themes.
 
 ---
 
 ## Convenience Print Functions
 
-In addition to `colored()`, TermTint provides direct print functions for fast CLI output:
+In addition to `colored()` and `styled()`, TermTint provides direct print functions:
 
 ```python
 from termtint import (
@@ -178,15 +256,15 @@ All convenience functions support standard Python `print()` keyword arguments: `
 By default, TermTint uses automatic terminal detection. You can explicitly force or disable colors programmatically:
 
 ```python
-from termtint import enable_color, disable_color, reset_color_state, colored
+from termtint import enable_color, disable_color, reset_color_state, styled
 
 # Force colors ON (e.g. CLI --color=always flag)
 enable_color()
-print(colored("Always colored", "cyan"))
+print(styled("Always colored", color="cyan"))
 
 # Force colors OFF (e.g. CLI --no-color flag)
 disable_color()
-print(colored("Plain text only", "cyan"))  # Output: "Plain text only"
+print(styled("Plain text only", color="cyan"))  # Output: "Plain text only"
 
 # Reset back to automatic detection
 reset_color_state()
@@ -214,16 +292,20 @@ On Windows 10 and 11, TermTint automatically enables Virtual Terminal (VT) proce
 
 ## Colorama Comparison
 
-TermTint is a focused, lightweight alternative for developers who primarily need simple colored terminal output, whereas Colorama provides broader historical ANSI translation.
+TermTint is a focused, lightweight alternative for developers who primarily need simple colored terminal output:
 
 | Feature / Goal | TermTint | Colorama |
 | :--- | :--- | :--- |
 | **Runtime Dependencies** | **Zero (Standard Library)** | External package |
-| **Primary Goal** | Lightweight colored output | Legacy ANSI translation |
-| **API Style** | Clean functional API | Module constants & stream wrappers |
+| **Primary Goal** | Lightweight colored & styled output | Legacy ANSI translation |
+| **API Style** | Clean functional API (`colored`, `styled`, `Theme`) | Module constants & stream wrappers |
 | **`stdout` Patching** | Avoided (pure string format) | Global stream wrapping option |
+| **Theme System** | Built-in role-based themes | Not supported |
+| **Multiple Styles** | Supported natively | Manual constant concatenation |
 | **Modern Windows 10/11** | Native VT API | Supported |
 | **`NO_COLOR` Standard** | Supported in auto mode | Not native |
+
+See [Migrating from Colorama to TermTint](docs/colorama_migration.md) for a side-by-side migration guide.
 
 ---
 
@@ -272,6 +354,7 @@ Full documentation is available in the [`docs/`](docs/) directory:
 - [API Reference](docs/api.md)
 - [Usage Guide](docs/usage.md)
 - [Architecture Overview](docs/architecture.md)
+- [Migrating from Colorama](docs/colorama_migration.md)
 - [Development Guide](docs/development.md)
 - [Publishing Guide](docs/publishing.md)
 

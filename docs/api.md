@@ -4,15 +4,68 @@ This document provides complete documentation for the public API surface of **Te
 
 ---
 
-## Functions
+## Core Formatting Functions
+
+### `styled(text, color=None, style=None, rgb=None, color256=None, theme=None, stream=None)`
+
+Formats text with optional colors, single or multiple styles, or semantic theme roles.
+
+- **`text`** (`Any`): The content to be styled. Converted to string. If no styling or theme is specified, returns `str(text)`.
+- **`color`** (`str`, optional): Standard foreground color name (`"black"`, `"red"`, `"green"`, `"yellow"`, `"blue"`, `"magenta"`, `"cyan"`, `"white"`).
+- **`style`** (`str | Sequence[str]`, optional): One or more text styles.
+  - Can be a single style string: `"bold"`
+  - A comma-separated string: `"bold, underline"`
+  - A sequence of strings: `["bold", "reverse"]` or `("italic", "underline")`
+  - Supported style tokens: `"normal"`, `"bold"`, `"bright"`, `"dim"`, `"italic"`, `"underline"`, `"reverse"`, `"strikethrough"`.
+- **`rgb`** (`tuple[int, int, int]`, optional): Sequence of 3 integers `(r, g, b)` between 0 and 255 for 24-bit True Color.
+- **`color256`** (`int`, optional): Extended 256-color ANSI code between 0 and 255.
+- **`theme`** (`str`, optional): Name of a role in the active theme (e.g., `"success"`, `"error"`, `"warning"`, `"info"`, `"muted"`, `"brand"`).
+- **`stream`** (`TextIO`, optional): Destination output stream for color capability detection. Defaults to `sys.stdout`.
+
+> [!NOTE]
+> `theme` cannot be combined with explicit `color`, `rgb`, or `color256`.
+> Furthermore, `color`, `rgb`, and `color256` are mutually exclusive.
+
+**Returns:**
+- `str`: Formatted ANSI string if color output is enabled for the stream; plain text string otherwise.
+
+**Raises:**
+- `ValueError`: If an invalid color, style, or conflicting arguments are provided.
+- `TypeError`: If arguments have invalid types.
+- `KeyError`: If the specified `theme` role is not registered in the active theme.
+
+**Examples:**
+```python
+from termtint import styled
+
+# Single style
+print(styled("Header", style="bold"))
+
+# Color and style
+print(styled("Warning!", color="yellow", style="bold"))
+
+# True Color and style
+print(styled("Accent", rgb=(255, 128, 0), style="italic"))
+
+# Multiple styles
+print(styled("Badge", color256=198, style=["bold", "reverse"]))
+print(styled("Alert", color="red", style=("bold", "underline")))
+
+# Semantic theme role
+print(styled("Success", theme="success"))
+
+# Plain text fallback (returns str(text))
+print(styled("Plain content"))
+```
+
+---
 
 ### `colored(text, color=None, style=None, rgb=None, color256=None, stream=None)`
 
-Formats a given string or object with ANSI escape sequences for color and optional styling.
+Formats a given string or object with ANSI escape sequences for a color and optional single style.
 
 - **`text`** (`Any`): The content to be styled. Converted to string.
-- **`color`** (`str`, optional): Standard foreground color name.
-  - Supported: `"black"`, `"red"`, `"green"`, `"yellow"`, `"blue"`, `"magenta"`, `"cyan"`, `"white"`.
+- **`color`** (`str`, optional): Standard foreground color name (`"black"`, `"red"`, `"green"`, `"yellow"`, `"blue"`, `"magenta"`, `"cyan"`, `"white"`).
 - **`style`** (`str`, optional): Text styling. Defaults to `None` (`"normal"`).
   - Supported: `"normal"`, `"bold"`, `"bright"`, `"dim"`, `"italic"`, `"underline"`, `"reverse"`, `"strikethrough"`.
 - **`rgb`** (`tuple[int, int, int]`, optional): Sequence of 3 integers `(r, g, b)` between 0 and 255 for 24-bit True Color.
@@ -47,6 +100,89 @@ print(colored("Hot pink", color256=198, style="underline"))
 ```
 
 ---
+
+## Theme System
+
+TermTint provides a lightweight, semantic theme system through the `Theme` class and module-level functions.
+
+### `Theme(roles=None, **role_kwargs)`
+
+Represents an immutable set of semantic styling roles.
+
+**Role Definition Schema:**
+A role definition is a `dict` specifying any combination of:
+- `color` (`str`, optional): Named color.
+- `rgb` (`tuple[int, int, int]`, optional): 24-bit True Color tuple.
+- `color256` (`int`, optional): 256-color ANSI integer (0-255).
+- `style` (`str | Sequence[str]`, optional): Single style or sequence of styles.
+
+> [!NOTE]
+> `color`, `rgb`, and `color256` are mutually exclusive within each role definition.
+
+**Methods:**
+
+#### `Theme.styled(text, role, stream=None)`
+Formats `text` according to the specified `role` in this theme.
+- **`text`** (`Any`): The content to style.
+- **`role`** (`str`): The name of the registered role.
+- **`stream`** (`TextIO`, optional): Output stream for capability detection.
+
+**Raises:**
+- `KeyError`: If `role` is not defined in the theme.
+
+#### `Theme.print(*values, role=None, sep=" ", end="\n", file=None, flush=False)`
+Prints formatted text according to the specified `role`.
+- `role` can be passed as a keyword argument (`role="success"`) or as the last positional argument (`theme.print("text", "success")`).
+- Passes `stream=file` to ensure destination stream capability checks are honored.
+
+#### `Theme.extend(roles=None, **role_kwargs)`
+Returns a **new** `Theme` instance merging this theme's roles with the supplied roles without mutating the original.
+
+**Example:**
+```python
+from termtint import Theme
+
+custom_theme = Theme({
+    "success": {"color": "green", "style": "bold"},
+    "warning": {"color": "yellow"},
+    "error": {"color": "red", "style": ["bold", "underline"]},
+    "brand": {"rgb": (0, 150, 255), "style": "bold"},
+})
+
+print(custom_theme.styled("All systems go", "success"))
+custom_theme.print("Caution: high temperature", "warning")
+
+# Extend with additional roles
+extended_theme = custom_theme.extend(
+    accent={"color256": 214, "style": "italic"}
+)
+```
+
+---
+
+### Global Theme State Functions
+
+#### `DEFAULT_THEME`
+The built-in default theme containing standard semantic roles:
+- `"success"`: green + bold
+- `"error"`: red + bold
+- `"warning"`: yellow
+- `"info"`: cyan + italic
+- `"muted"`: dim
+- `"brand"`: rgb=(0, 122, 255) + bold
+
+#### `get_theme()`
+Returns the current active global `Theme`.
+
+#### `set_theme(theme)`
+Sets the active global `Theme`. Raises `TypeError` if `theme` is not an instance of `Theme`.
+
+#### `reset_theme()`
+Resets the active global theme back to `DEFAULT_THEME`.
+
+---
+
+## State Control Functions
 
 ### `enable_color()`
 
