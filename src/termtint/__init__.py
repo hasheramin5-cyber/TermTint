@@ -1,6 +1,12 @@
 """TermTint: A lightweight Python library for simple colored terminal output."""
 
+from termtint._detect import (
+    supports_256color,
+    supports_color,
+    supports_truecolor,
+)
 from termtint.core import (
+    color256_to_ansi,
     colored,
     disable_color,
     enable_color,
@@ -16,8 +22,11 @@ from termtint.core import (
     print_white,
     print_yellow,
     reset_color_state,
+    rgb_to_256,
+    rgb_to_ansi,
     styled,
 )
+from termtint.style import Style
 from termtint.theme import (
     DEFAULT_THEME,
     Theme,
@@ -26,15 +35,22 @@ from termtint.theme import (
     set_theme,
 )
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 __all__ = [
     "colored",
     "styled",
+    "Style",
     "enable_color",
     "disable_color",
     "is_color_enabled",
     "reset_color_state",
+    "supports_color",
+    "supports_256color",
+    "supports_truecolor",
+    "rgb_to_ansi",
+    "rgb_to_256",
+    "color256_to_ansi",
     "print_black",
     "print_red",
     "print_green",

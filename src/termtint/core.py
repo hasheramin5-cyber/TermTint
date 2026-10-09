@@ -8,6 +8,8 @@ from termtint._detect import (
     ColorState,
     set_color_state,
     should_color,
+    supports_256color,
+    supports_truecolor,
 )
 from termtint._detect import (
     reset_color_state as _reset_state,
@@ -106,6 +108,127 @@ def _validate_color256(color256: Any) -> str:
         )
 
     return f"38;5;{color256}"
+
+
+ANSI_COLOR_RGB: dict[str, tuple[int, int, int]] = {
+    "black": (0, 0, 0),
+    "red": (205, 0, 0),
+    "green": (0, 205, 0),
+    "yellow": (205, 205, 0),
+    "blue": (0, 0, 238),
+    "magenta": (205, 0, 205),
+    "cyan": (0, 205, 205),
+    "white": (229, 229, 229),
+}
+
+
+def rgb_to_ansi(rgb: Any) -> str:
+    """Map an RGB color tuple to the closest standard named ANSI color.
+
+    Args:
+        rgb: Sequence of 3 integers (r, g, b) between 0 and 255.
+
+    Returns:
+        str: Closest standard color name (e.g. 'red', 'green', 'blue').
+
+    Raises:
+        TypeError: If rgb or its components are not valid integers.
+        ValueError: If rgb does not have 3 components or components are out of range.
+    """
+    _validate_rgb(rgb)
+    r, g, b = tuple(rgb)
+    best_color = "white"
+    best_dist = float("inf")
+    for name, (cr, cg, cb) in ANSI_COLOR_RGB.items():
+        dist = (r - cr) ** 2 + (g - cg) ** 2 + (b - cb) ** 2
+        if dist < best_dist:
+            best_dist = dist
+            best_color = name
+    return best_color
+
+
+def rgb_to_256(rgb: Any) -> int:
+    """Map an RGB color tuple to the closest 256-color ANSI code (0-255).
+
+    Args:
+        rgb: Sequence of 3 integers (r, g, b) between 0 and 255.
+
+    Returns:
+        int: ANSI 256-color index (0-255).
+
+    Raises:
+        TypeError: If rgb or its components are not valid integers.
+        ValueError: If rgb does not have 3 components or components are out of range.
+    """
+    _validate_rgb(rgb)
+    r, g, b = tuple(rgb)
+
+    if r == g == b:
+        if r < 8:
+            return 16
+        if r > 248:
+            return 231
+        return round(((r - 8) / 240) * 23) + 232
+
+    cube_steps = (0, 95, 135, 175, 215, 255)
+
+    def _closest_step(val: int) -> int:
+        best_idx = 0
+        min_diff = 999
+        for idx, step in enumerate(cube_steps):
+            diff = abs(val - step)
+            if diff < min_diff:
+                min_diff = diff
+                best_idx = idx
+        return best_idx
+
+    r_idx = _closest_step(r)
+    g_idx = _closest_step(g)
+    b_idx = _closest_step(b)
+    return 16 + (36 * r_idx) + (6 * g_idx) + b_idx
+
+
+def color256_to_ansi(color256: Any) -> str:
+    """Map a 256-color ANSI index to the closest standard named ANSI color.
+
+    Args:
+        color256: Integer color code (0-255).
+
+    Returns:
+        str: Closest standard color name.
+
+    Raises:
+        TypeError: If color256 is not an integer or is a boolean.
+        ValueError: If color256 is out of 0-255 range.
+    """
+    _validate_color256(color256)
+    c = int(color256)
+
+    standard_names = (
+        "black",
+        "red",
+        "green",
+        "yellow",
+        "blue",
+        "magenta",
+        "cyan",
+        "white",
+    )
+    if c < 8:
+        return standard_names[c]
+    if c < 16:
+        return standard_names[c - 8]
+
+    if c <= 231:
+        cube_steps = (0, 95, 135, 175, 215, 255)
+        idx = c - 16
+        b_idx = idx % 6
+        g_idx = (idx // 6) % 6
+        r_idx = idx // 36
+        return rgb_to_ansi((cube_steps[r_idx], cube_steps[g_idx], cube_steps[b_idx]))
+
+    gray = 8 + 10 * (c - 232)
+    return "white" if gray >= 128 else "black"
 
 
 def _normalize_styles(style: Any) -> list[str]:
@@ -292,6 +415,7 @@ def styled(
     rgb: Optional[tuple[int, int, int]] = None,
     color256: Optional[int] = None,
     theme: Optional[str] = None,
+    fallback: Union[bool, TextIO] = False,
     stream: Optional[TextIO] = None,
 ) -> str:
     """Format text with ANSI escape codes for colors, styles, and themes.
@@ -305,6 +429,7 @@ def styled(
         rgb: Optional sequence of 3 integers (r, g, b) between 0 and 255.
         color256: Optional integer color code between 0 and 255.
         theme: Optional theme role name (e.g. 'success', 'error', 'warning', 'info').
+        fallback: Whether to downgrade True Color/256-color if terminal lacks support.
         stream: Optional destination stream for color capability detection.
 
     Returns:
@@ -315,6 +440,16 @@ def styled(
         TypeError: If invalid types are supplied.
         KeyError: If an unknown theme role is specified.
     """
+    if isinstance(fallback, bool):
+        use_fallback = fallback
+    elif hasattr(fallback, "write") or hasattr(fallback, "isatty"):
+        stream = fallback  # type: ignore[assignment]
+        use_fallback = False
+    else:
+        raise TypeError(
+            f"fallback must be a boolean, got {type(fallback).__name__}."
+        )
+
     if theme is not None:
         if isinstance(theme, bool) or not isinstance(theme, str):
             tname = type(theme).__name__
@@ -332,9 +467,20 @@ def styled(
         if "color" in role_def:
             color_code = COLORS[role_def["color"]]
         elif "rgb" in role_def:
-            color_code = _validate_rgb(role_def["rgb"])
+            role_rgb = role_def["rgb"]
+            if use_fallback and not supports_truecolor(stream):
+                if supports_256color(stream):
+                    color_code = _validate_color256(rgb_to_256(role_rgb))
+                else:
+                    color_code = COLORS[rgb_to_ansi(role_rgb)]
+            else:
+                color_code = _validate_rgb(role_rgb)
         elif "color256" in role_def:
-            color_code = _validate_color256(role_def["color256"])
+            role_256 = role_def["color256"]
+            if use_fallback and not supports_256color(stream):
+                color_code = COLORS[color256_to_ansi(role_256)]
+            else:
+                color_code = _validate_color256(role_256)
 
         all_styles: list[Any] = []
         if "style" in role_def:
@@ -373,9 +519,18 @@ def styled(
             )
         color_code = COLORS[color_lower]
     elif rgb is not None:
-        color_code = _validate_rgb(rgb)
+        if use_fallback and not supports_truecolor(stream):
+            if supports_256color(stream):
+                color_code = _validate_color256(rgb_to_256(rgb))
+            else:
+                color_code = COLORS[rgb_to_ansi(rgb)]
+        else:
+            color_code = _validate_rgb(rgb)
     elif color256 is not None:
-        color_code = _validate_color256(color256)
+        if use_fallback and not supports_256color(stream):
+            color_code = COLORS[color256_to_ansi(color256)]
+        else:
+            color_code = _validate_color256(color256)
 
     style_codes = _normalize_styles(style)
     return _render_ansi(

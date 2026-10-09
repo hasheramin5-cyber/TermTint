@@ -86,7 +86,7 @@ def _detect_color_support(stream: TextIO) -> bool:
         return False
 
     # 2. Check explicit force environment flags
-    if os.environ.get("FORCE_COLOR") in ("1", "true", "TRUE"):
+    if os.environ.get("FORCE_COLOR") in ("1", "2", "3", "true", "TRUE"):
         return True
     if os.environ.get("CLICOLOR_FORCE") in ("1", "true", "TRUE"):
         return True
@@ -107,6 +107,107 @@ def _detect_color_support(stream: TextIO) -> bool:
     if sys.platform == "win32":
         if any(env in os.environ for env in ("WT_SESSION", "ANSICON", "ConEmuANSI")):
             return True
+        colorterm = os.environ.get("COLORTERM", "").lower()
+        if colorterm in ("truecolor", "24bit"):
+            return True
         return enable_vt_mode()
 
     return True
+
+
+def supports_color(stream: Optional[TextIO] = None) -> bool:
+    """Determine whether the terminal or stream supports color output.
+
+    Args:
+        stream: Optional file stream to check. Defaults to sys.stdout.
+
+    Returns:
+        bool: True if colors are supported and enabled, False otherwise.
+    """
+    return should_color(stream=stream)
+
+
+def supports_256color(stream: Optional[TextIO] = None) -> bool:
+    """Determine whether the terminal or stream supports 256-color ANSI output.
+
+    Args:
+        stream: Optional file stream to check. Defaults to sys.stdout.
+
+    Returns:
+        bool: True if 256-color output is supported, False otherwise.
+    """
+    if not supports_color(stream=stream):
+        return False
+
+    if os.environ.get("FORCE_COLOR") in ("2", "3"):
+        return True
+
+    colorterm = os.environ.get("COLORTERM", "").lower()
+    if colorterm in ("truecolor", "24bit"):
+        return True
+
+    term = os.environ.get("TERM", "").lower()
+    if "256color" in term or term.endswith("-256"):
+        return True
+    if term in (
+        "xterm-kitty",
+        "alacritty",
+        "foot",
+        "wezterm",
+        "ghostty",
+        "screen-256color",
+        "tmux-256color",
+    ):
+        return True
+
+    if sys.platform == "win32":
+        if any(env in os.environ for env in ("WT_SESSION", "ANSICON", "ConEmuANSI")):
+            return True
+        return enable_vt_mode()
+
+    return False
+
+
+def supports_truecolor(stream: Optional[TextIO] = None) -> bool:
+    """Determine whether the terminal or stream supports 24-bit True Color (RGB).
+
+    Args:
+        stream: Optional file stream to check. Defaults to sys.stdout.
+
+    Returns:
+        bool: True if 24-bit True Color is supported, False otherwise.
+    """
+    if not supports_color(stream=stream):
+        return False
+
+    if os.environ.get("FORCE_COLOR") == "3":
+        return True
+
+    colorterm = os.environ.get("COLORTERM", "").lower()
+    if colorterm in ("truecolor", "24bit"):
+        return True
+
+    term = os.environ.get("TERM", "").lower()
+    if term in (
+        "xterm-kitty",
+        "alacritty",
+        "foot",
+        "wezterm",
+        "ghostty",
+        "iterm2",
+    ):
+        return True
+    if term.startswith("xterm-direct"):
+        return True
+
+    if sys.platform == "win32":
+        if "WT_SESSION" in os.environ:
+            return True
+        try:
+            win_ver = sys.getwindowsversion()
+            if getattr(win_ver, "build", 0) >= 14393:
+                return enable_vt_mode()
+        except Exception:
+            return False
+
+    return False

@@ -64,12 +64,16 @@ def test_force_color_environment(monkeypatch):
     assert should_color() is True
 
 
-def test_non_tty_stream():
+def test_non_tty_stream(monkeypatch):
+    monkeypatch.delenv("FORCE_COLOR", raising=False)
+    monkeypatch.delenv("CLICOLOR_FORCE", raising=False)
     stream = io.StringIO()  # StringIO is non-TTY
     assert should_color(stream) is False
 
 
 def test_term_dumb_environment(monkeypatch):
+    monkeypatch.delenv("FORCE_COLOR", raising=False)
+    monkeypatch.delenv("CLICOLOR_FORCE", raising=False)
     monkeypatch.setenv("TERM", "dumb")
     mock_tty = MagicMock()
     mock_tty.isatty.return_value = True
