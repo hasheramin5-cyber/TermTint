@@ -150,7 +150,9 @@ def test_supports_truecolor():
     mock_winver.build = 19045
     with patch.dict("os.environ", {}, clear=True):
         with patch("sys.platform", "win32"):
-            with patch("sys.getwindowsversion", return_value=mock_winver):
+            with patch(
+                "sys.getwindowsversion", return_value=mock_winver, create=True
+            ):
                 with patch("termtint._detect.enable_vt_mode", return_value=True):
                     assert supports_truecolor(mock_tty) is True
                 with patch("termtint._detect.enable_vt_mode", return_value=False):
@@ -161,14 +163,20 @@ def test_supports_truecolor():
     mock_old_winver.build = 10240
     with patch.dict("os.environ", {}, clear=True):
         with patch("sys.platform", "win32"):
-            with patch("sys.getwindowsversion", return_value=mock_old_winver):
+            with patch(
+                "sys.getwindowsversion",
+                return_value=mock_old_winver,
+                create=True,
+            ):
                 assert supports_truecolor(mock_tty) is False
 
     # Windows getwindowsversion exception
     enable_color()
     with patch.dict("os.environ", {}, clear=True):
         with patch("sys.platform", "win32"):
-            with patch("sys.getwindowsversion", side_effect=RuntimeError):
+            with patch(
+                "sys.getwindowsversion", side_effect=RuntimeError, create=True
+            ):
                 assert supports_truecolor(mock_tty) is False
     reset_color_state()
 
