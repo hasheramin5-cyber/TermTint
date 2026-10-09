@@ -34,6 +34,9 @@ def _validate_role_definition(role: str, definition: Any) -> dict[str, Any]:
     if not role.strip():
         raise ValueError("Theme role name cannot be empty.")
 
+    if hasattr(definition, "to_dict") and callable(definition.to_dict):
+        definition = definition.to_dict()
+
     if isinstance(definition, bool) or not isinstance(definition, dict):
         tname = type(definition).__name__
         raise TypeError(
@@ -102,8 +105,8 @@ class Theme:
 
     def __init__(
         self,
-        roles: Optional[dict[str, dict[str, Any]]] = None,
-        **kwargs: dict[str, Any],
+        roles: Optional[dict[str, Any]] = None,
+        **kwargs: Any,
     ) -> None:
         """Initialize a new Theme with validated semantic roles.
 
@@ -150,6 +153,28 @@ class Theme:
                 f"Unknown theme role '{role}'. Available roles: {available}"
             )
         return dict(self._roles[role])
+
+    def get_style(self, role: str) -> Any:
+        """Retrieve a reusable Style instance for a registered role.
+
+        Args:
+            role: Name of the semantic role.
+
+        Returns:
+            Style: Reusable Style matching the theme role.
+
+        Raises:
+            KeyError: If role is not defined in this theme.
+        """
+        from termtint.style import Style
+
+        role_def = self.get_role(role)
+        return Style(
+            color=role_def.get("color"),
+            style=role_def.get("style"),
+            rgb=role_def.get("rgb"),
+            color256=role_def.get("color256"),
+        )
 
     def styled(
         self,

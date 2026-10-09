@@ -444,7 +444,14 @@ def test_package_exports():
     assert termtint.get_theme is termtint.theme.get_theme
     assert termtint.set_theme is termtint.theme.set_theme
     assert termtint.reset_theme is termtint.theme.reset_theme
-    assert termtint.__version__ == "0.3.0"
+    assert termtint.Style is termtint.style.Style
+    assert termtint.supports_color is termtint._detect.supports_color
+    assert termtint.supports_256color is termtint._detect.supports_256color
+    assert termtint.supports_truecolor is termtint._detect.supports_truecolor
+    assert termtint.rgb_to_ansi is termtint.core.rgb_to_ansi
+    assert termtint.rgb_to_256 is termtint.core.rgb_to_256
+    assert termtint.color256_to_ansi is termtint.core.color256_to_ansi
+    assert termtint.__version__ == "0.4.0"
 
 
 

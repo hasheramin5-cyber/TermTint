@@ -33,6 +33,37 @@ print(styled("Clean unstyled text"))
 
 ---
 
+## Reusable Styles with `Style`
+
+Introduced in **v0.4.0**, `Style` objects encapsulate colors, styles, and theme roles into immutable, reusable instances:
+
+```python
+from termtint import Style
+
+# 1. Defining styles
+header = Style("cyan", style="bold").underline()
+alert = Style("red", style="bold")
+badge = Style(color256=198, style="reverse")
+
+# 2. Applying styles (call syntax or .apply())
+print(header("=== Application Dashboard ==="))
+print(alert.apply("Warning: High CPU temperature!"))
+
+# 3. Direct printing with Style.print()
+alert.print("Disk write failure:", "/dev/sda1", sep=" ")
+
+# 4. Fluent chaining (creates new instances, preserving immutability)
+base = Style("blue")
+bold_blue = base.bold()
+italic_blue = base.italic()
+
+# 5. Composition using the + operator
+pill = Style("green") + Style(style="reverse")
+pill.print(" ACTIVE ")
+```
+
+---
+
 ## Semantic Theme System
 
 TermTint includes role-based theming, separating presentation logic from business code.
@@ -52,20 +83,20 @@ print(styled("Timestamp: 12:00:00", theme="muted"))     # Dim
 print(styled("Acme CLI v1.0", theme="brand"))           # RGB Blue + Bold
 ```
 
-### 2. Custom Themes
+### 2. Custom Themes and Style Integration
 
-Define domain-specific roles for your application using `Theme`:
+Define domain-specific roles for your application using `Theme`. Roles can be defined as dictionaries or `Style` instances:
 
 ```python
-from termtint import Theme
+from termtint import Theme, Style
 
-# Define roles using color, rgb, color256, and style
+# Define roles using Style or dictionaries
 app_theme = Theme({
-    "success": {"color": "green", "style": "bold"},
-    "danger": {"color": "red", "style": ["bold", "underline"]},
-    "highlight": {"color256": 214, "style": "bold"},
+    "success": Style("green", style="bold"),
+    "danger": Style("red", style=["bold", "underline"]),
+    "highlight": Style(color256=214, style="bold"),
     "brand": {"rgb": (120, 80, 255), "style": "bold"},
-    "trace": {"style": "dim"},
+    "trace": Style(style="dim"),
 })
 
 # Format text with Theme.styled()
@@ -75,6 +106,10 @@ print(formatted)
 # Print directly with Theme.print()
 app_theme.print("System startup", "brand")
 app_theme.print("Disk full", "danger")
+
+# Extract roles as reusable Style objects
+brand_style = app_theme.get_style("brand")
+brand_style.print("Welcome to Acme CLI")
 ```
 
 ### 3. Extending Themes
@@ -84,8 +119,8 @@ Create variations of existing themes without mutating the original:
 ```python
 # Create an extended theme with additional roles
 extended_theme = app_theme.extend(
-    accent={"color": "magenta", "style": "italic"},
-    danger={"color": "red", "style": ["bold", "reverse"]}  # Overrides danger
+    accent=Style("magenta", style="italic"),
+    danger=Style("red", style=["bold", "reverse"]),  # Overrides danger
 )
 
 extended_theme.print("Special announcement", "accent")
@@ -200,6 +235,51 @@ with open("output.txt", "w") as f:
     print_green("Hello file", file=f)  # Outputs clean plain text without ANSI
     f.write(styled("Logged event", color="blue", stream=f) + "\n")
 ```
+
+---
+
+## Terminal Capabilities & Smart Color Fallback
+
+Introduced in **v0.4.0**, TermTint lets you query the exact terminal capability tier and automatically fall back to supported colors:
+
+### 1. Direct Capability Queries
+
+```python
+from termtint import supports_color, supports_256color, supports_truecolor
+import sys
+
+# Query default stdout capabilities
+print("Basic ANSI supported:", supports_color())
+print("256-color supported:", supports_256color())
+print("True Color supported:", supports_truecolor())
+
+# Query destination stream
+if not supports_color(sys.stderr):
+    print("stderr is redirected or plain text")
+```
+
+### 2. Smart Color Degradation with `fallback=True`
+
+In real-world environments (CI runners, embedded terminals, remote SSH sessions), True Color might not be supported even if color is enabled.
+
+Passing `fallback=True` ensures that colors degrade gracefully instead of being stripped completely or rendering incorrectly:
+
+```python
+from termtint import Style, styled
+
+# RGB style that gracefully falls back to 256 or 16 colors
+button = Style(rgb=(0, 122, 255), style="bold", fallback=True)
+button.print("Click Here")
+
+# styled() with fallback
+print(styled("Graceful RGB", rgb=(255, 140, 0), fallback=True))
+print(styled("Graceful 256", color256=208, fallback=True))
+```
+
+- When True Color is supported: Renders full 24-bit True Color (`\033[38;2;r;g;bm`).
+- When only 256 colors are supported: Automatically converts RGB to the closest 256-color index (`\033[38;5;nm`).
+- When only basic ANSI is supported: Automatically converts RGB or 256-color to the nearest 16-color ANSI (`\033[3Xm`).
+- When color is disabled or redirected: Returns clean plain text.
 
 ---
 
