@@ -1,21 +1,17 @@
-MIT License
+Copyright (C) 2026 [Hasher Amin / `hasheramin5-cyber`]. All Rights Reserved.
 
-Copyright (c) 2026 TermTint Contributors
+TermTint is a proprietary, source-available library.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to sunshine, following conditions:
+1. PERMITTED USE:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+* Anyone is free to download, install (via pip or source), clone, and use this library as a dependency in their personal, educational, or commercial software applications.
+* Developers are allowed to read the source code for learning, auditing, and inspection purposes.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. STRICT RESTRICTIONS:
+
+* You are strictly PROHIBITED from copying, republishing, hosting, or redistributing this source code (or any derivative/modified version of it) under your own name or as a separate repository/package.
+* Making cosmetic or structural changes (such as renaming variables, modifying function names, altering folder structures, or changing documentation) and publishing it as a new library or tool is a direct violation of this copyright.
+
+3. LEGAL ENFORCEMENT:
+Any unauthorized republication, mirroring, or distribution of TermTint's code under another name will face an immediate DMCA Takedown Notice on GitHub, PyPI, or any other platform where it is hosted.
+
