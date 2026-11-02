@@ -24,7 +24,9 @@ from termtint.core import (
     reset_color_state,
     rgb_to_256,
     rgb_to_ansi,
+    strip_ansi,
     styled,
+    visible_len,
 )
 from termtint.style import Style
 from termtint.theme import (
@@ -35,7 +37,7 @@ from termtint.theme import (
     set_theme,
 )
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 __all__ = [
     "colored",
@@ -51,6 +53,8 @@ __all__ = [
     "rgb_to_ansi",
     "rgb_to_256",
     "color256_to_ansi",
+    "strip_ansi",
+    "visible_len",
     "print_black",
     "print_red",
     "print_green",

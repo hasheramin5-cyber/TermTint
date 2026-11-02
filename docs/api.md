@@ -6,9 +6,9 @@ This document provides complete documentation for the public API surface of **Te
 
 ## Core Formatting Functions
 
-### `styled(text, color=None, style=None, rgb=None, color256=None, theme=None, stream=None, fallback=False)`
+### `styled(text, color=None, style=None, rgb=None, color256=None, bg=None, bg_rgb=None, bg_color256=None, theme=None, stream=None, fallback=False)`
 
-Formats text with optional colors, single or multiple styles, semantic theme roles, or smart color fallback.
+Formats text with optional colors, background colors, single or multiple styles, semantic theme roles, or smart color fallback.
 
 - **`text`** (`Any`): The content to be styled. Converted to string. If no styling or theme is specified, returns `str(text)`.
 - **`color`** (`str`, optional): Standard foreground color name (`"black"`, `"red"`, `"green"`, `"yellow"`, `"blue"`, `"magenta"`, `"cyan"`, `"white"`).
@@ -17,15 +17,19 @@ Formats text with optional colors, single or multiple styles, semantic theme rol
   - A comma-separated string: `"bold, underline"`
   - A sequence of strings: `["bold", "reverse"]` or `("italic", "underline")`
   - Supported style tokens: `"normal"`, `"bold"`, `"bright"`, `"dim"`, `"italic"`, `"underline"`, `"reverse"`, `"strikethrough"`.
-- **`rgb`** (`tuple[int, int, int]`, optional): Sequence of 3 integers `(r, g, b)` between 0 and 255 for 24-bit True Color.
-- **`color256`** (`int`, optional): Extended 256-color ANSI code between 0 and 255.
+- **`rgb`** (`tuple[int, int, int]`, optional): Sequence of 3 integers `(r, g, b)` between 0 and 255 for 24-bit True Color foreground.
+- **`color256`** (`int`, optional): Extended 256-color ANSI code between 0 and 255 for foreground.
+- **`bg`** (`str`, optional): Standard background color name (`"black"`, `"red"`, `"green"`, `"yellow"`, `"blue"`, `"magenta"`, `"cyan"`, `"white"`).
+- **`bg_rgb`** (`tuple[int, int, int]`, optional): Sequence of 3 integers `(r, g, b)` between 0 and 255 for 24-bit True Color background.
+- **`bg_color256`** (`int`, optional): Extended 256-color ANSI code between 0 and 255 for background.
 - **`theme`** (`str`, optional): Name of a role in the active theme (e.g., `"success"`, `"error"`, `"warning"`, `"info"`, `"muted"`, `"brand"`).
 - **`stream`** (`TextIO`, optional): Destination output stream for color capability detection. Defaults to `sys.stdout`.
-- **`fallback`** (`bool`, optional): When `True`, automatically downgrades True Color (RGB) to 256-color or 16-color ANSI, or 256-color to 16-color ANSI, if the destination stream does not support the higher color tier. Defaults to `False`.
+- **`fallback`** (`bool`, optional): When `True`, automatically downgrades True Color (RGB) to 256-color or 16-color ANSI, or 256-color to 16-color ANSI, if the destination stream does not support the higher color tier. Applies to both foreground and background colors. Defaults to `False`.
 
 > [!NOTE]
-> `theme` cannot be combined with explicit `color`, `rgb`, or `color256`.
-> Furthermore, `color`, `rgb`, and `color256` are mutually exclusive.
+> `theme` cannot be combined with explicit colors or background colors.
+> Foreground options (`color`, `rgb`, `color256`) are mutually exclusive.
+> Background options (`bg`, `bg_rgb`, `bg_color256`) are mutually exclusive.
 
 **Returns:**
 - `str`: Formatted ANSI string if color output is enabled for the stream; plain text string otherwise.
@@ -61,20 +65,25 @@ print(styled("Plain content"))
 
 ---
 
-### `colored(text, color=None, style=None, rgb=None, color256=None, stream=None)`
+### `colored(text, color=None, style=None, rgb=None, color256=None, bg=None, bg_rgb=None, bg_color256=None, stream=None)`
 
-Formats a given string or object with ANSI escape sequences for a color and optional single style.
+Formats a given string or object with ANSI escape sequences for foreground/background colors and optional single style.
 
 - **`text`** (`Any`): The content to be styled. Converted to string.
 - **`color`** (`str`, optional): Standard foreground color name (`"black"`, `"red"`, `"green"`, `"yellow"`, `"blue"`, `"magenta"`, `"cyan"`, `"white"`).
 - **`style`** (`str`, optional): Text styling. Defaults to `None` (`"normal"`).
   - Supported: `"normal"`, `"bold"`, `"bright"`, `"dim"`, `"italic"`, `"underline"`, `"reverse"`, `"strikethrough"`.
-- **`rgb`** (`tuple[int, int, int]`, optional): Sequence of 3 integers `(r, g, b)` between 0 and 255 for 24-bit True Color.
-- **`color256`** (`int`, optional): Extended 256-color ANSI code between 0 and 255.
+- **`rgb`** (`tuple[int, int, int]`, optional): Sequence of 3 integers `(r, g, b)` between 0 and 255 for 24-bit True Color foreground.
+- **`color256`** (`int`, optional): Extended 256-color ANSI code between 0 and 255 for foreground.
+- **`bg`** (`str`, optional): Standard background color name.
+- **`bg_rgb`** (`tuple[int, int, int]`, optional): Sequence of 3 integers `(r, g, b)` between 0 and 255 for 24-bit True Color background.
+- **`bg_color256`** (`int`, optional): Extended 256-color ANSI code between 0 and 255 for background.
 - **`stream`** (`TextIO`, optional): Destination output stream for color capability detection. Defaults to `sys.stdout`.
 
 > [!NOTE]
-> `color`, `rgb`, and `color256` are mutually exclusive. Exactly one color source must be provided.
+> Foreground options (`color`, `rgb`, `color256`) are mutually exclusive.
+> Background options (`bg`, `bg_rgb`, `bg_color256`) are mutually exclusive.
+> At least one styling attribute (color, background, or style) should typically be provided.
 
 **Returns:**
 - `str`: Formatted ANSI string if color output is enabled for the stream; plain text string otherwise.
@@ -87,16 +96,16 @@ Formats a given string or object with ANSI escape sequences for a color and opti
 ```python
 from termtint import colored
 
-# Named color
-print(colored("Task completed!", "green"))
-print(colored("High priority alert", "red", style="bold"))
+# Named color and background
+print(colored("Task completed!", "green", bg="black"))
+print(colored("High priority alert", "red", bg="white", style="bold"))
 
 # 24-bit True Color (RGB)
-print(colored("Coral header", rgb=(255, 127, 80)))
+print(colored("Coral header", rgb=(255, 127, 80), bg_rgb=(10, 20, 30)))
 print(colored("Styled sky blue", rgb=(135, 206, 235), style="italic"))
 
 # 256-color ANSI
-print(colored("Vibrant orange", color256=208))
+print(colored("Vibrant orange", color256=208, bg_color256=234))
 print(colored("Hot pink", color256=198, style="underline"))
 ```
 
@@ -104,21 +113,26 @@ print(colored("Hot pink", color256=198, style="underline"))
 
 ## Reusable Style Class
 
-Introduced in **v0.4.0**, `Style` represents an immutable styling object that encapsulates colors, styles, theme roles, and fallback settings.
+Introduced in **v0.4.0** and expanded with background colors in **v0.5.0**, `Style` represents an immutable styling object that encapsulates foreground/background colors, styles, theme roles, and fallback settings.
 
-### `Style(color=None, style=None, rgb=None, color256=None, theme=None, fallback=False)`
+### `Style(color=None, style=None, rgb=None, color256=None, bg=None, bg_rgb=None, bg_color256=None, theme=None, fallback=False)`
 
 Creates an immutable `Style` definition.
 
-- **`color`** (`str`, optional): Standard foreground color name (`"black"`, `"red"`, `"green"`, `"yellow"`, `"blue"`, `"magenta"`, `"cyan"`, `"white"`).
+- **`color`** (`str`, optional): Standard foreground color name.
 - **`style`** (`str | Sequence[str]`, optional): One or more text styles.
-- **`rgb`** (`tuple[int, int, int]`, optional): 24-bit True Color `(r, g, b)` tuple.
-- **`color256`** (`int`, optional): 256-color ANSI integer code (0-255).
+- **`rgb`** (`tuple[int, int, int]`, optional): 24-bit True Color `(r, g, b)` tuple for foreground.
+- **`color256`** (`int`, optional): 256-color ANSI integer code (0-255) for foreground.
+- **`bg`** (`str`, optional): Standard background color name.
+- **`bg_rgb`** (`tuple[int, int, int]`, optional): 24-bit True Color `(r, g, b)` tuple for background.
+- **`bg_color256`** (`int`, optional): 256-color ANSI integer code (0-255) for background.
 - **`theme`** (`str`, optional): Semantic role in the active theme.
 - **`fallback`** (`bool`, optional): If `True`, enables graceful degradation when the destination terminal lacks high-color support.
 
 > [!NOTE]
-> `color`, `rgb`, and `color256` are mutually exclusive. Furthermore, `theme` cannot be combined with explicit colors.
+> Foreground options (`color`, `rgb`, `color256`) are mutually exclusive.
+> Background options (`bg`, `bg_rgb`, `bg_color256`) are mutually exclusive.
+> Furthermore, `theme` cannot be combined with explicit colors or backgrounds.
 
 **Methods:**
 
@@ -141,9 +155,12 @@ All chaining methods return a **new** `Style` instance without mutating the orig
 - **`Style.reverse()`**: Returns a new `Style` with reverse styling added.
 - **`Style.strikethrough()`**: Returns a new `Style` with strikethrough styling added.
 - **`Style.dim()`**: Returns a new `Style` with dim styling added.
-- **`Style.with_color(color)`**: Returns a new `Style` with the specified color name (clears `rgb` and `color256`).
+- **`Style.with_color(color)`**: Returns a new `Style` with the specified foreground color (clears `rgb` and `color256`).
 - **`Style.with_rgb(rgb)`**: Returns a new `Style` with the specified RGB tuple (clears `color` and `color256`).
 - **`Style.with_color256(code)`**: Returns a new `Style` with the specified 256-color index (clears `color` and `rgb`).
+- **`Style.with_bg(bg)`**: Returns a new `Style` with the specified background color (clears `bg_rgb` and `bg_color256`).
+- **`Style.with_bg_rgb(rgb)`**: Returns a new `Style` with the specified RGB background tuple (clears `bg` and `bg_color256`).
+- **`Style.with_bg_color256(code)`**: Returns a new `Style` with the specified 256-color background index (clears `bg` and `bg_rgb`).
 - **`Style.with_style(style)`**: Returns a new `Style` with the specified style or sequence of styles.
 - **`Style.with_theme(role)`**: Returns a new `Style` referencing the specified theme role (clears explicit colors).
 - **`Style.with_fallback(fallback)`**: Returns a new `Style` with the fallback flag set.
@@ -186,13 +203,17 @@ Represents an immutable set of semantic styling roles.
 
 **Role Definition Schema:**
 A role definition can be a `dict` or a `Style` instance specifying:
-- `color` (`str`, optional): Named color.
-- `rgb` (`tuple[int, int, int]`, optional): 24-bit True Color tuple.
-- `color256` (`int`, optional): 256-color ANSI integer (0-255).
+- `color` (`str`, optional): Named foreground color.
+- `rgb` (`tuple[int, int, int]`, optional): 24-bit True Color foreground tuple.
+- `color256` (`int`, optional): 256-color ANSI integer (0-255) for foreground.
+- `bg` (`str`, optional): Named background color.
+- `bg_rgb` (`tuple[int, int, int]`, optional): 24-bit True Color background tuple.
+- `bg_color256` (`int`, optional): 256-color ANSI integer (0-255) for background.
 - `style` (`str | Sequence[str]`, optional): Single style or sequence of styles.
 
 > [!NOTE]
 > `color`, `rgb`, and `color256` are mutually exclusive within each role definition.
+> `bg`, `bg_rgb`, and `bg_color256` are likewise mutually exclusive.
 
 **Methods:**
 
@@ -385,32 +406,66 @@ print(color256_to_ansi(196))       # -> "red"
 
 ## Convenience Print Functions
 
-TermTint provides helper functions that combine formatting and printing in a single call. They inspect the destination `file` stream automatically to avoid adding ANSI escape sequences to non-TTY streams.
+TermTint provides helper functions that combine formatting and printing in a single call. They inspect the destination `file` stream automatically to avoid adding ANSI escape sequences to non-TTY streams. All functions support optional background colors (`bg`, `bg_rgb`, `bg_color256`) as well as standard Python `print()` keyword arguments (`sep`, `end`, `file`, `flush`).
 
 ### Named Color Print Functions
-- `print_black(*values, style=None, sep=" ", end="\n", file=None, flush=False)`
-- `print_red(*values, style=None, sep=" ", end="\n", file=None, flush=False)`
-- `print_green(*values, style=None, sep=" ", end="\n", file=None, flush=False)`
-- `print_yellow(*values, style=None, sep=" ", end="\n", file=None, flush=False)`
-- `print_blue(*values, style=None, sep=" ", end="\n", file=None, flush=False)`
-- `print_magenta(*values, style=None, sep=" ", end="\n", file=None, flush=False)`
-- `print_cyan(*values, style=None, sep=" ", end="\n", file=None, flush=False)`
-- `print_white(*values, style=None, sep=" ", end="\n", file=None, flush=False)`
+- `print_black(*values, style=None, bg=None, bg_rgb=None, bg_color256=None, sep=" ", end="\n", file=None, flush=False)`
+- `print_red(*values, style=None, bg=None, bg_rgb=None, bg_color256=None, sep=" ", end="\n", file=None, flush=False)`
+- `print_green(*values, style=None, bg=None, bg_rgb=None, bg_color256=None, sep=" ", end="\n", file=None, flush=False)`
+- `print_yellow(*values, style=None, bg=None, bg_rgb=None, bg_color256=None, sep=" ", end="\n", file=None, flush=False)`
+- `print_blue(*values, style=None, bg=None, bg_rgb=None, bg_color256=None, sep=" ", end="\n", file=None, flush=False)`
+- `print_magenta(*values, style=None, bg=None, bg_rgb=None, bg_color256=None, sep=" ", end="\n", file=None, flush=False)`
+- `print_cyan(*values, style=None, bg=None, bg_rgb=None, bg_color256=None, sep=" ", end="\n", file=None, flush=False)`
+- `print_white(*values, style=None, bg=None, bg_rgb=None, bg_color256=None, sep=" ", end="\n", file=None, flush=False)`
 
 ### RGB & 256-Color Print Functions
-- `print_rgb(rgb, *values, style=None, sep=" ", end="\n", file=None, flush=False)`
-- `print_256(color256, *values, style=None, sep=" ", end="\n", file=None, flush=False)`
+- `print_rgb(rgb, *values, style=None, bg=None, bg_rgb=None, bg_color256=None, sep=" ", end="\n", file=None, flush=False)`
+- `print_256(color256, *values, style=None, bg=None, bg_rgb=None, bg_color256=None, sep=" ", end="\n", file=None, flush=False)`
 
 **Example:**
 ```python
 from termtint import print_green, print_red, print_rgb, print_256
 
-print_green("Operation successful!")
-print_red("Fatal Error:", "File not found", sep=" ", style="bold")
-print_rgb((255, 140, 0), "Battery level critical")
-print_256(208, "Sensor calibration warning")
+print_green("Operation successful!", bg="black")
+print_red("Fatal Error:", "File not found", sep=" ", bg="white", style="bold")
+print_rgb((255, 255, 255), "Battery level critical", bg_rgb=(255, 140, 0))
+print_256(15, "Sensor calibration warning", bg_color256=208)
 
 # Writing to a log file automatically avoids ANSI codes
 with open("app.log", "w") as f:
     print_green("Log entry without ANSI codes", file=f)
+```
+
+---
+
+## ANSI Utilities
+
+Introduced in **v0.5.0**, these functions provide fast, regex-based ANSI escape stripping and visible length measurement for terminal text formatting and alignment.
+
+### `strip_ansi(text)`
+Removes all ANSI SGR escape sequences (`\033[...m`) and OSC hyperlink sequences (`\033]8;;...\033\\` or `\033]8;;...\a`) from `text`.
+
+- **`text`** (`Any`): The text containing ANSI codes. Non-strings are converted via `str(text)`.
+- **Returns:** `str` — Clean string with all ANSI sequences stripped.
+
+**Example:**
+```python
+from termtint import styled, strip_ansi
+
+formatted = styled("Success", color="green", bg="black", style="bold")
+plain = strip_ansi(formatted)  # "Success"
+```
+
+### `visible_len(text)`
+Calculates the visible character width of `text` when rendered in a terminal by stripping ANSI escape sequences before measuring length.
+
+- **`text`** (`Any`): The string or object to measure.
+- **Returns:** `int` — Number of visible characters.
+
+**Example:**
+```python
+from termtint import styled, visible_len
+
+tag = styled("[INFO]", color="cyan", style="bold")
+width = visible_len(tag)  # 6 characters (not 20+ bytes with ANSI escapes)
 ```

@@ -6,9 +6,12 @@ from typing import Any, Optional, TextIO, Union
 
 from termtint._detect import supports_256color, supports_truecolor
 from termtint.core import (
+    BG_COLORS,
     COLORS,
     _normalize_styles,
     _render_ansi,
+    _validate_bg_color256,
+    _validate_bg_rgb,
     _validate_color256,
     _validate_rgb,
     color256_to_ansi,
@@ -28,6 +31,9 @@ class Style:
         color256: Optional[int] = None,
         theme: Optional[str] = None,
         fallback: bool = False,
+        bg: Optional[str] = None,
+        bg_rgb: Optional[tuple[int, int, int]] = None,
+        bg_color256: Optional[int] = None,
     ) -> None:
         """Initialize a new Style instance.
 
@@ -38,6 +44,9 @@ class Style:
             color256: Optional 256-color ANSI code (0-255).
             theme: Optional semantic theme role name.
             fallback: Whether to downgrade True Color/256-color if unsupported.
+            bg: Optional standard named background color.
+            bg_rgb: Optional 24-bit True Color background tuple (r, g, b).
+            bg_color256: Optional 256-color ANSI background code (0-255).
 
         Raises:
             ValueError: If conflicting options or invalid values are specified.
@@ -53,15 +62,21 @@ class Style:
             if isinstance(theme, bool) or not isinstance(theme, str):
                 tname = type(theme).__name__
                 raise TypeError(f"Theme role must be a string, got {tname}.")
-            if any(x is not None for x in (color, rgb, color256)):
+            if any(
+                x is not None
+                for x in (color, rgb, color256, bg, bg_rgb, bg_color256)
+            ):
                 raise ValueError(
                     "Cannot specify 'theme' together with 'color', 'rgb', "
-                    "or 'color256'."
+                    "'color256', 'bg', 'bg_rgb', or 'bg_color256'."
                 )
             self._theme = theme
             self._color: Optional[str] = None
             self._rgb: Optional[tuple[int, int, int]] = None
             self._color256: Optional[int] = None
+            self._bg: Optional[str] = None
+            self._bg_rgb: Optional[tuple[int, int, int]] = None
+            self._bg_color256: Optional[int] = None
         else:
             self._theme = None
             color_specs = sum(x is not None for x in (color, rgb, color256))
@@ -97,6 +112,43 @@ class Style:
                 self._color = None
                 self._rgb = None
                 self._color256 = None
+
+            bg_specs = sum(x is not None for x in (bg, bg_rgb, bg_color256))
+            if bg_specs > 1:
+                raise ValueError(
+                    "Only one of 'bg', 'bg_rgb', or 'bg_color256' may be specified."
+                )
+
+            if bg is not None:
+                if isinstance(bg, bool) or not isinstance(bg, str):
+                    tname = type(bg).__name__
+                    raise TypeError(
+                        f"Named background color must be a string, got {tname}."
+                    )
+                bg_lower = bg.lower()
+                if bg_lower not in BG_COLORS:
+                    valid_bgs = ", ".join(sorted(BG_COLORS.keys()))
+                    raise ValueError(
+                        f"Invalid background color '{bg}'. "
+                        f"Supported background colors are: {valid_bgs}"
+                    )
+                self._bg = bg_lower
+                self._bg_rgb = None
+                self._bg_color256 = None
+            elif bg_rgb is not None:
+                _validate_bg_rgb(bg_rgb)
+                self._bg_rgb = tuple(bg_rgb)
+                self._bg = None
+                self._bg_color256 = None
+            elif bg_color256 is not None:
+                _validate_bg_color256(bg_color256)
+                self._bg_color256 = bg_color256
+                self._bg = None
+                self._bg_rgb = None
+            else:
+                self._bg = None
+                self._bg_rgb = None
+                self._bg_color256 = None
 
         if style is not None:
             _normalize_styles(style)
@@ -136,6 +188,21 @@ class Style:
         return self._color256
 
     @property
+    def bg(self) -> Optional[str]:
+        """Return the named background color if configured."""
+        return self._bg
+
+    @property
+    def bg_rgb(self) -> Optional[tuple[int, int, int]]:
+        """Return the background RGB tuple if configured."""
+        return self._bg_rgb
+
+    @property
+    def bg_color256(self) -> Optional[int]:
+        """Return the 256-color background index if configured."""
+        return self._bg_color256
+
+    @property
     def style(self) -> tuple[str, ...]:
         """Return the tuple of configured text styles."""
         return self._styles
@@ -158,6 +225,9 @@ class Style:
         color256: Any = ...,
         theme: Any = ...,
         fallback: Any = ...,
+        bg: Any = ...,
+        bg_rgb: Any = ...,
+        bg_color256: Any = ...,
     ) -> "Style":
         """Internal helper to create a modified clone."""
         new_color = self._color if color is ... else color
@@ -166,6 +236,9 @@ class Style:
         new_color256 = self._color256 if color256 is ... else color256
         new_theme = self._theme if theme is ... else theme
         new_fallback = self._fallback if fallback is ... else fallback
+        new_bg = self._bg if bg is ... else bg
+        new_bg_rgb = self._bg_rgb if bg_rgb is ... else bg_rgb
+        new_bg_color256 = self._bg_color256 if bg_color256 is ... else bg_color256
         return Style(
             color=new_color,
             style=new_style,
@@ -173,6 +246,9 @@ class Style:
             color256=new_color256,
             theme=new_theme,
             fallback=new_fallback,
+            bg=new_bg,
+            bg_rgb=new_bg_rgb,
+            bg_color256=new_bg_color256,
         )
 
     def bold(self) -> "Style":
@@ -229,6 +305,18 @@ class Style:
         """Return a new Style with the specified 256-color index."""
         return self._clone(color=None, rgb=None, color256=color256, theme=None)
 
+    def with_bg(self, bg: Optional[str]) -> "Style":
+        """Return a new Style with the specified named background color."""
+        return self._clone(bg=bg, bg_rgb=None, bg_color256=None, theme=None)
+
+    def with_bg_rgb(self, bg_rgb: Optional[tuple[int, int, int]]) -> "Style":
+        """Return a new Style with the specified background RGB tuple."""
+        return self._clone(bg=None, bg_rgb=bg_rgb, bg_color256=None, theme=None)
+
+    def with_bg_color256(self, bg_color256: Optional[int]) -> "Style":
+        """Return a new Style with the specified 256-color background index."""
+        return self._clone(bg=None, bg_rgb=None, bg_color256=bg_color256, theme=None)
+
     def with_style(
         self, style: Optional[Union[str, Sequence[str]]]
     ) -> "Style":
@@ -237,7 +325,15 @@ class Style:
 
     def with_theme(self, theme: Optional[str]) -> "Style":
         """Return a new Style with the specified theme role."""
-        return self._clone(color=None, rgb=None, color256=None, theme=theme)
+        return self._clone(
+            color=None,
+            rgb=None,
+            color256=None,
+            bg=None,
+            bg_rgb=None,
+            bg_color256=None,
+            theme=theme,
+        )
 
     def with_fallback(self, fallback: bool) -> "Style":
         """Return a new Style with the specified fallback behavior."""
@@ -252,6 +348,13 @@ class Style:
             d["rgb"] = self._rgb
         elif self._color256 is not None:
             d["color256"] = self._color256
+
+        if self._bg is not None:
+            d["bg"] = self._bg
+        elif self._bg_rgb is not None:
+            d["bg_rgb"] = self._bg_rgb
+        elif self._bg_color256 is not None:
+            d["bg_color256"] = self._bg_color256
 
         if self._styles:
             d["style"] = list(self._styles)
@@ -311,6 +414,25 @@ class Style:
                 else:
                     color_code = _validate_color256(role_256)
 
+            bg_code: Optional[str] = None
+            if "bg" in role_def:
+                bg_code = BG_COLORS[role_def["bg"]]
+            elif "bg_rgb" in role_def:
+                role_bg_rgb = role_def["bg_rgb"]
+                if self._fallback and not supports_truecolor(stream):
+                    if supports_256color(stream):
+                        bg_code = _validate_bg_color256(rgb_to_256(role_bg_rgb))
+                    else:
+                        bg_code = BG_COLORS[rgb_to_ansi(role_bg_rgb)]
+                else:
+                    bg_code = _validate_bg_rgb(role_bg_rgb)
+            elif "bg_color256" in role_def:
+                role_bg_256 = role_def["bg_color256"]
+                if self._fallback and not supports_256color(stream):
+                    bg_code = BG_COLORS[color256_to_ansi(role_bg_256)]
+                else:
+                    bg_code = _validate_bg_color256(role_bg_256)
+
             all_styles: list[Any] = []
             if "style" in role_def:
                 rs = role_def["style"]
@@ -324,6 +446,7 @@ class Style:
                 text,
                 color_code=color_code,
                 style_codes=style_codes,
+                bg_code=bg_code,
                 stream=stream,
             )
 
@@ -344,9 +467,30 @@ class Style:
             else:
                 color_code = _validate_color256(self._color256)
 
+        bg_code = None
+        if self._bg is not None:
+            bg_code = BG_COLORS[self._bg]
+        elif self._bg_rgb is not None:
+            if self._fallback and not supports_truecolor(stream):
+                if supports_256color(stream):
+                    bg_code = _validate_bg_color256(rgb_to_256(self._bg_rgb))
+                else:
+                    bg_code = BG_COLORS[rgb_to_ansi(self._bg_rgb)]
+            else:
+                bg_code = _validate_bg_rgb(self._bg_rgb)
+        elif self._bg_color256 is not None:
+            if self._fallback and not supports_256color(stream):
+                bg_code = BG_COLORS[color256_to_ansi(self._bg_color256)]
+            else:
+                bg_code = _validate_bg_color256(self._bg_color256)
+
         style_codes = _normalize_styles(self._styles) if self._styles else []
         return _render_ansi(
-            text, color_code=color_code, style_codes=style_codes, stream=stream
+            text,
+            color_code=color_code,
+            style_codes=style_codes,
+            bg_code=bg_code,
+            stream=stream,
         )
 
     def print(
@@ -393,27 +537,60 @@ class Style:
             color = None
             rgb = None
             color256 = None
+            bg = None
+            bg_rgb = None
+            bg_color256 = None
             theme = other._theme
-        elif other._color is not None:
-            color = other._color
-            rgb = None
-            color256 = None
+        elif (
+            other._color is not None
+            or other._rgb is not None
+            or other._color256 is not None
+            or other._bg is not None
+            or other._bg_rgb is not None
+            or other._bg_color256 is not None
+        ):
             theme = None
-        elif other._rgb is not None:
-            color = None
-            rgb = other._rgb
-            color256 = None
-            theme = None
-        elif other._color256 is not None:
-            color = None
-            rgb = None
-            color256 = other._color256
-            theme = None
+            if other._color is not None:
+                color = other._color
+                rgb = None
+                color256 = None
+            elif other._rgb is not None:
+                color = None
+                rgb = other._rgb
+                color256 = None
+            elif other._color256 is not None:
+                color = None
+                rgb = None
+                color256 = other._color256
+            else:
+                color = self._color
+                rgb = self._rgb
+                color256 = self._color256
+
+            if other._bg is not None:
+                bg = other._bg
+                bg_rgb = None
+                bg_color256 = None
+            elif other._bg_rgb is not None:
+                bg = None
+                bg_rgb = other._bg_rgb
+                bg_color256 = None
+            elif other._bg_color256 is not None:
+                bg = None
+                bg_rgb = None
+                bg_color256 = other._bg_color256
+            else:
+                bg = self._bg
+                bg_rgb = self._bg_rgb
+                bg_color256 = self._bg_color256
         else:
+            theme = self._theme
             color = self._color
             rgb = self._rgb
             color256 = self._color256
-            theme = self._theme
+            bg = self._bg
+            bg_rgb = self._bg_rgb
+            bg_color256 = self._bg_color256
 
         fallback = self._fallback or other._fallback
 
@@ -424,6 +601,9 @@ class Style:
             color256=color256,
             theme=theme,
             fallback=fallback,
+            bg=bg,
+            bg_rgb=bg_rgb,
+            bg_color256=bg_color256,
         )
 
     def __repr__(self) -> str:
@@ -434,6 +614,12 @@ class Style:
             parts.append(f"rgb={self._rgb!r}")
         if self._color256 is not None:
             parts.append(f"color256={self._color256!r}")
+        if self._bg:
+            parts.append(f"bg={self._bg!r}")
+        if self._bg_rgb:
+            parts.append(f"bg_rgb={self._bg_rgb!r}")
+        if self._bg_color256 is not None:
+            parts.append(f"bg_color256={self._bg_color256!r}")
         if self._styles:
             parts.append(f"style={list(self._styles)!r}")
         if self._theme:
@@ -449,6 +635,9 @@ class Style:
             self._color == other._color
             and self._rgb == other._rgb
             and self._color256 == other._color256
+            and self._bg == other._bg
+            and self._bg_rgb == other._bg_rgb
+            and self._bg_color256 == other._bg_color256
             and self._theme == other._theme
             and self._styles == other._styles
             and self._fallback == other._fallback
@@ -460,6 +649,9 @@ class Style:
                 self._color,
                 self._rgb,
                 self._color256,
+                self._bg,
+                self._bg_rgb,
+                self._bg_color256,
                 self._theme,
                 self._styles,
                 self._fallback,
