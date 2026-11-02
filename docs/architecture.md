@@ -75,23 +75,24 @@ User Application Call
 ## Module Responsibilities
 
 ### `core.py`
-- Defines ANSI lookup tables for foreground colors and styles.
+- Defines ANSI lookup tables for foreground colors, background colors (`BG_COLORS`), and styles.
 - Implements `_normalize_styles()` to parse and validate single or multiple style specifications.
-- Implements `_render_ansi()` as the shared ANSI escape sequence builder.
+- Implements `_render_ansi()` as the shared ANSI escape sequence builder for foreground, background, and styles.
 - Implements color conversion math: `rgb_to_ansi()`, `rgb_to_256()`, and `color256_to_ansi()`.
-- Exposes `styled()`, `colored()`, state toggles (`enable_color()`, `disable_color()`, `reset_color_state()`), and `print_*()` helper functions.
+- Implements ANSI string utility functions: `strip_ansi()` and `visible_len()`.
+- Exposes `styled()`, `colored()`, state toggles (`enable_color()`, `disable_color()`, `reset_color_state()`), and `print_*()` helper functions with background options.
 - Resolves theme roles via `theme.py` when `theme=` is passed to `styled()`.
 
 ### `style.py`
-- Implements the immutable `Style` class encapsulating color, style, theme role, and fallback behavior.
-- Provides fluent immutable chaining methods (`.bold()`, `.italic()`, `.underline()`, `.reverse()`, `.strikethrough()`, `.dim()`, and `.with_*()`).
+- Implements the immutable `Style` class encapsulating foreground/background colors, styles, theme role, and fallback behavior.
+- Provides fluent immutable chaining methods (`.bold()`, `.italic()`, `.underline()`, `.reverse()`, `.strikethrough()`, `.dim()`, and `.with_*()`, including `.with_bg()`, `.with_bg_rgb()`, `.with_bg_color256()`).
 - Supports the `+` operator for style composition.
 - Implements `.apply()`, `.__call__()`, and `.print()`.
 - Provides serialization (`.to_dict()`) and factory constructors (`Style.from_role(role)`).
 
 ### `theme.py`
 - Implements the immutable `Theme` class representing semantic roles.
-- Validates role definitions against supported colors, True Color RGB tuples, 256-color codes, styles, or `Style` instances.
+- Validates role definitions against supported foreground and background colors, True Color RGB tuples, 256-color codes, styles, or `Style` instances.
 - Provides `Theme.styled(...)`, `Theme.print(...)`, `Theme.get_style(...)`, and non-mutating `Theme.extend(...)`.
 - Maintains global theme state (`DEFAULT_THEME`, `get_theme()`, `set_theme()`, `reset_theme()`).
 

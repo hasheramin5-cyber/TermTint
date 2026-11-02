@@ -1,5 +1,6 @@
 """Core text coloring and styling implementation for TermTint."""
 
+import re
 import sys
 from collections.abc import Sequence
 from typing import Any, Optional, TextIO, Union
@@ -26,6 +27,17 @@ COLORS: dict[str, str] = {
     "white": "37",
 }
 
+BG_COLORS: dict[str, str] = {
+    "black": "40",
+    "red": "41",
+    "green": "42",
+    "yellow": "43",
+    "blue": "44",
+    "magenta": "45",
+    "cyan": "46",
+    "white": "47",
+}
+
 STYLES: dict[str, str] = {
     "normal": "0",
     "bright": "1",
@@ -38,6 +50,34 @@ STYLES: dict[str, str] = {
 }
 
 RESET_CODE: str = "\033[0m"
+
+ANSI_ESCAPE_RE: re.Pattern[str] = re.compile(
+    r"\x1b(?:\[[0-?]*[ -/]*[@-~]|\].*?(?:\x1b\\|\x07)|[@-Z\\-_])"
+)
+
+
+def strip_ansi(text: Any) -> str:
+    """Remove ANSI escape sequences from text.
+
+    Args:
+        text: Any object or string containing ANSI escape codes.
+
+    Returns:
+        str: Plain string with all ANSI escape sequences removed.
+    """
+    return ANSI_ESCAPE_RE.sub("", str(text))
+
+
+def visible_len(text: Any) -> int:
+    """Calculate the visible character length of text excluding ANSI escape codes.
+
+    Args:
+        text: Any object or string containing ANSI escape codes.
+
+    Returns:
+        int: Number of visible printable characters.
+    """
+    return len(strip_ansi(text))
 
 
 def _validate_rgb(rgb: Any) -> str:
@@ -108,6 +148,81 @@ def _validate_color256(color256: Any) -> str:
         )
 
     return f"38;5;{color256}"
+
+
+def _validate_bg_rgb(bg_rgb: Any) -> str:
+    """Validate background RGB tuple and return ANSI SGR background color code string.
+
+    Args:
+        bg_rgb: Sequence of 3 integer components (0-255).
+
+    Returns:
+        str: SGR parameter string '48;2;R;G;B'.
+
+    Raises:
+        TypeError: If bg_rgb or any component is not an integer or is a boolean.
+        ValueError: If bg_rgb does not have 3 items or values are out of 0-255 range.
+    """
+    if isinstance(bg_rgb, (bool, bytes, str)):
+        raise TypeError(
+            "Background RGB must be a tuple or list of 3 integers, "
+            f"got {type(bg_rgb).__name__}."
+        )
+    try:
+        rgb_list = list(bg_rgb)
+    except TypeError:
+        raise TypeError(
+            "Background RGB must be a sequence of 3 integers, "
+            f"got {type(bg_rgb).__name__}."
+        )
+
+    if len(rgb_list) != 3:
+        raise ValueError(
+            "Background RGB must contain exactly 3 components (r, g, b), "
+            f"got {len(rgb_list)}."
+        )
+
+    for i, c in enumerate(rgb_list):
+        if isinstance(c, bool) or not isinstance(c, int):
+            tname = type(c).__name__
+            raise TypeError(
+                f"Background RGB component at index {i} must be an integer, "
+                f"got {tname} ({c!r})."
+            )
+        if not (0 <= c <= 255):
+            raise ValueError(
+                f"Background RGB component at index {i} must be between 0 and 255, "
+                f"got {c}."
+            )
+
+    r, g, b = rgb_list
+    return f"48;2;{r};{g};{b}"
+
+
+def _validate_bg_color256(bg_color256: Any) -> str:
+    """Validate 256-color background index and return ANSI SGR color code string.
+
+    Args:
+        bg_color256: Integer color code (0-255).
+
+    Returns:
+        str: SGR parameter string '48;5;N'.
+
+    Raises:
+        TypeError: If bg_color256 is not an integer or is a boolean.
+        ValueError: If bg_color256 is out of 0-255 range.
+    """
+    if isinstance(bg_color256, bool) or not isinstance(bg_color256, int):
+        tname = type(bg_color256).__name__
+        raise TypeError(
+            f"Background color256 must be an integer, got {tname} ({bg_color256!r})."
+        )
+    if not (0 <= bg_color256 <= 255):
+        raise ValueError(
+            f"Background color256 must be between 0 and 255, got {bg_color256}."
+        )
+
+    return f"48;5;{bg_color256}"
 
 
 ANSI_COLOR_RGB: dict[str, tuple[int, int, int]] = {
@@ -297,14 +412,16 @@ def _render_ansi(
     text: Any,
     color_code: Optional[str] = None,
     style_codes: Optional[list[str]] = None,
+    bg_code: Optional[str] = None,
     stream: Optional[TextIO] = None,
 ) -> str:
-    """Render text with ANSI escape codes for color and styles.
+    """Render text with ANSI escape codes for color, background, and styles.
 
     Args:
         text: Content to render.
         color_code: Optional ANSI color code string (e.g. '31', '38;2;R;G;B').
         style_codes: Optional list of ANSI style code strings.
+        bg_code: Optional ANSI background color code string (e.g. '41', '48;2;R;G;B').
         stream: Optional destination stream for color capability detection.
 
     Returns:
@@ -314,11 +431,11 @@ def _render_ansi(
 
     active_styles = (
         [c for c in (style_codes or []) if c != "0"]
-        if color_code
+        if (color_code or bg_code)
         else (style_codes or [])
     )
 
-    if not color_code and not active_styles:
+    if not color_code and not active_styles and not bg_code:
         return text_str
 
     if not should_color(stream=stream):
@@ -329,6 +446,8 @@ def _render_ansi(
         codes.extend(active_styles)
     if color_code:
         codes.append(color_code)
+    if bg_code:
+        codes.append(bg_code)
 
     prefix = f"\033[{';'.join(codes)}m"
     return f"{prefix}{text_str}{RESET_CODE}"
@@ -341,10 +460,13 @@ def colored(
     rgb: Optional[tuple[int, int, int]] = None,
     color256: Optional[int] = None,
     stream: Optional[TextIO] = None,
+    bg: Optional[str] = None,
+    bg_rgb: Optional[tuple[int, int, int]] = None,
+    bg_color256: Optional[int] = None,
 ) -> str:
-    """Format text with ANSI escape codes for specified color and optional style.
+    """Format text with ANSI escape codes for color, bg, and optional style.
 
-    Supports named colors, 24-bit True Color (RGB), and 256-color ANSI.
+    Supports named colors, True Color (RGB), 256-color, and background colors.
 
     Args:
         text: Any object to be converted to a string and styled.
@@ -353,24 +475,34 @@ def colored(
         rgb: Optional tuple/list of 3 integers (r, g, b) between 0 and 255.
         color256: Optional integer color code between 0 and 255.
         stream: Optional destination stream for color capability detection.
+        bg: Optional name of the background color (black, red, green, etc.).
+        bg_rgb: Optional tuple/list of 3 integers (r, g, b) for background True Color.
+        bg_color256: Optional integer color code (0-255) for background 256-color.
 
     Returns:
         str: ANSI formatted string when color is enabled, plain text otherwise.
 
     Raises:
         ValueError: If invalid color/style or conflicting color options are specified.
-        TypeError: If invalid types are supplied for color, rgb, or color256.
+        TypeError: If invalid types are supplied for colors, styles, or bg.
     """
     color_specs = sum(x is not None for x in (color, rgb, color256))
-    if color_specs == 0:
+    bg_specs = sum(x is not None for x in (bg, bg_rgb, bg_color256))
+    if color_specs == 0 and bg_specs == 0:
         raise ValueError(
-            "A color must be specified using 'color', 'rgb', or 'color256'."
+            "A color must be specified using 'color', 'rgb', 'color256', "
+            "'bg', 'bg_rgb', or 'bg_color256'."
         )
     if color_specs > 1:
         raise ValueError(
             "Only one of 'color', 'rgb', or 'color256' may be specified."
         )
+    if bg_specs > 1:
+        raise ValueError(
+            "Only one of 'bg', 'bg_rgb', or 'bg_color256' may be specified."
+        )
 
+    color_code = None
     if color is not None:
         if isinstance(color, bool) or not isinstance(color, str):
             raise TypeError(
@@ -385,8 +517,27 @@ def colored(
         color_code = COLORS[color_lower]
     elif rgb is not None:
         color_code = _validate_rgb(rgb)
-    else:
+    elif color256 is not None:
         color_code = _validate_color256(color256)
+
+    bg_code = None
+    if bg is not None:
+        if isinstance(bg, bool) or not isinstance(bg, str):
+            raise TypeError(
+                f"Named background color must be a string, got {type(bg).__name__}."
+            )
+        bg_lower = bg.lower()
+        if bg_lower not in BG_COLORS:
+            valid_bgs = ", ".join(sorted(BG_COLORS.keys()))
+            raise ValueError(
+                f"Invalid background color '{bg}'. "
+                f"Supported background colors are: {valid_bgs}"
+            )
+        bg_code = BG_COLORS[bg_lower]
+    elif bg_rgb is not None:
+        bg_code = _validate_bg_rgb(bg_rgb)
+    elif bg_color256 is not None:
+        bg_code = _validate_bg_color256(bg_color256)
 
     if style is not None:
         if isinstance(style, bool) or not isinstance(style, str):
@@ -404,7 +555,11 @@ def colored(
         style_codes = ["0"]
 
     return _render_ansi(
-        text, color_code=color_code, style_codes=style_codes, stream=stream
+        text,
+        color_code=color_code,
+        style_codes=style_codes,
+        bg_code=bg_code,
+        stream=stream,
     )
 
 
@@ -417,10 +572,13 @@ def styled(
     theme: Optional[str] = None,
     fallback: Union[bool, TextIO] = False,
     stream: Optional[TextIO] = None,
+    bg: Optional[str] = None,
+    bg_rgb: Optional[tuple[int, int, int]] = None,
+    bg_color256: Optional[int] = None,
 ) -> str:
-    """Format text with ANSI escape codes for colors, styles, and themes.
+    """Format text with ANSI escape codes for colors, styles, background, and themes.
 
-    Supports pure styles, named colors, RGB, 256-color, multiple styles, and themes.
+    Supports styles, named colors, RGB, 256-color, background, and themes.
 
     Args:
         text: Any object to be converted to a string and styled.
@@ -431,6 +589,9 @@ def styled(
         theme: Optional theme role name (e.g. 'success', 'error', 'warning', 'info').
         fallback: Whether to downgrade True Color/256-color if terminal lacks support.
         stream: Optional destination stream for color capability detection.
+        bg: Optional name of the background color (black, red, green, etc.).
+        bg_rgb: Optional sequence of 3 integers (r, g, b) for background True Color.
+        bg_color256: Optional integer color code (0-255) for background 256-color.
 
     Returns:
         str: Formatted ANSI string when color is enabled, plain text otherwise.
@@ -454,9 +615,10 @@ def styled(
         if isinstance(theme, bool) or not isinstance(theme, str):
             tname = type(theme).__name__
             raise TypeError(f"Theme role must be a string, got {tname}.")
-        if any(x is not None for x in (color, rgb, color256)):
+        if any(x is not None for x in (color, rgb, color256, bg, bg_rgb, bg_color256)):
             raise ValueError(
-                "Cannot specify 'theme' together with 'color', 'rgb', or 'color256'."
+                "Cannot specify 'theme' together with 'color', 'rgb', 'color256', "
+                "'bg', 'bg_rgb', or 'bg_color256'."
             )
         from termtint.theme import get_theme
 
@@ -482,6 +644,25 @@ def styled(
             else:
                 color_code = _validate_color256(role_256)
 
+        bg_code: Optional[str] = None
+        if "bg" in role_def:
+            bg_code = BG_COLORS[role_def["bg"]]
+        elif "bg_rgb" in role_def:
+            role_bg_rgb = role_def["bg_rgb"]
+            if use_fallback and not supports_truecolor(stream):
+                if supports_256color(stream):
+                    bg_code = _validate_bg_color256(rgb_to_256(role_bg_rgb))
+                else:
+                    bg_code = BG_COLORS[rgb_to_ansi(role_bg_rgb)]
+            else:
+                bg_code = _validate_bg_rgb(role_bg_rgb)
+        elif "bg_color256" in role_def:
+            role_bg_256 = role_def["bg_color256"]
+            if use_fallback and not supports_256color(stream):
+                bg_code = BG_COLORS[color256_to_ansi(role_bg_256)]
+            else:
+                bg_code = _validate_bg_color256(role_bg_256)
+
         all_styles: list[Any] = []
         if "style" in role_def:
             role_style = role_def["style"]
@@ -497,13 +678,23 @@ def styled(
 
         style_codes = _normalize_styles(all_styles) if all_styles else []
         return _render_ansi(
-            text, color_code=color_code, style_codes=style_codes, stream=stream
+            text,
+            color_code=color_code,
+            style_codes=style_codes,
+            bg_code=bg_code,
+            stream=stream,
         )
 
     color_specs = sum(x is not None for x in (color, rgb, color256))
     if color_specs > 1:
         raise ValueError(
             "Only one of 'color', 'rgb', or 'color256' may be specified."
+        )
+
+    bg_specs = sum(x is not None for x in (bg, bg_rgb, bg_color256))
+    if bg_specs > 1:
+        raise ValueError(
+            "Only one of 'bg', 'bg_rgb', or 'bg_color256' may be specified."
         )
 
     color_code = None
@@ -532,9 +723,42 @@ def styled(
         else:
             color_code = _validate_color256(color256)
 
+    bg_code = None
+    if bg is not None:
+        if isinstance(bg, bool) or not isinstance(bg, str):
+            tname = type(bg).__name__
+            raise TypeError(
+                f"Named background color must be a string, got {tname}."
+            )
+        bg_lower = bg.lower()
+        if bg_lower not in BG_COLORS:
+            valid_bgs = ", ".join(sorted(BG_COLORS.keys()))
+            raise ValueError(
+                f"Invalid background color '{bg}'. "
+                f"Supported background colors are: {valid_bgs}"
+            )
+        bg_code = BG_COLORS[bg_lower]
+    elif bg_rgb is not None:
+        if use_fallback and not supports_truecolor(stream):
+            if supports_256color(stream):
+                bg_code = _validate_bg_color256(rgb_to_256(bg_rgb))
+            else:
+                bg_code = BG_COLORS[rgb_to_ansi(bg_rgb)]
+        else:
+            bg_code = _validate_bg_rgb(bg_rgb)
+    elif bg_color256 is not None:
+        if use_fallback and not supports_256color(stream):
+            bg_code = BG_COLORS[color256_to_ansi(bg_color256)]
+        else:
+            bg_code = _validate_bg_color256(bg_color256)
+
     style_codes = _normalize_styles(style)
     return _render_ansi(
-        text, color_code=color_code, style_codes=style_codes, stream=stream
+        text,
+        color_code=color_code,
+        style_codes=style_codes,
+        bg_code=bg_code,
+        stream=stream,
     )
 
 
@@ -569,6 +793,7 @@ def _print_color(
     color: str,
     *values: Any,
     style: Optional[str] = None,
+    bg: Optional[str] = None,
     sep: str = " ",
     end: str = "\n",
     file: Optional[TextIO] = None,
@@ -577,7 +802,7 @@ def _print_color(
     """Internal helper to print colored values."""
     target = file if file is not None else sys.stdout
     text = sep.join(str(v) for v in values)
-    output = colored(text, color=color, style=style, stream=target)
+    output = colored(text, color=color, style=style, bg=bg, stream=target)
     print(output, end=end, file=target, flush=flush)
 
 
@@ -585,6 +810,8 @@ def print_rgb(
     rgb: tuple[int, int, int],
     *values: Any,
     style: Optional[str] = None,
+    bg: Optional[str] = None,
+    bg_rgb: Optional[tuple[int, int, int]] = None,
     sep: str = " ",
     end: str = "\n",
     file: Optional[TextIO] = None,
@@ -596,6 +823,8 @@ def print_rgb(
         rgb: Sequence of 3 integers (r, g, b) between 0 and 255.
         *values: Values to be printed.
         style: Optional text style (normal, bold, bright, dim, italic, etc.).
+        bg: Optional named background color.
+        bg_rgb: Optional sequence of 3 integers (r, g, b) for background True Color.
         sep: String inserted between values, default a space.
         end: String appended after the last value, default a newline.
         file: A file-like object (stream); defaults to sys.stdout.
@@ -603,7 +832,7 @@ def print_rgb(
     """
     target = file if file is not None else sys.stdout
     text = sep.join(str(v) for v in values)
-    output = colored(text, rgb=rgb, style=style, stream=target)
+    output = colored(text, rgb=rgb, style=style, bg=bg, bg_rgb=bg_rgb, stream=target)
     print(output, end=end, file=target, flush=flush)
 
 
@@ -611,6 +840,8 @@ def print_256(
     color256: int,
     *values: Any,
     style: Optional[str] = None,
+    bg: Optional[str] = None,
+    bg_color256: Optional[int] = None,
     sep: str = " ",
     end: str = "\n",
     file: Optional[TextIO] = None,
@@ -622,6 +853,8 @@ def print_256(
         color256: Integer color code between 0 and 255.
         *values: Values to be printed.
         style: Optional text style (normal, bold, bright, dim, italic, etc.).
+        bg: Optional named background color.
+        bg_color256: Optional integer color code between 0 and 255 for background.
         sep: String inserted between values, default a space.
         end: String appended after the last value, default a newline.
         file: A file-like object (stream); defaults to sys.stdout.
@@ -629,13 +862,21 @@ def print_256(
     """
     target = file if file is not None else sys.stdout
     text = sep.join(str(v) for v in values)
-    output = colored(text, color256=color256, style=style, stream=target)
+    output = colored(
+        text,
+        color256=color256,
+        style=style,
+        bg=bg,
+        bg_color256=bg_color256,
+        stream=target,
+    )
     print(output, end=end, file=target, flush=flush)
 
 
 def print_black(
     *values: Any,
     style: Optional[str] = None,
+    bg: Optional[str] = None,
     sep: str = " ",
     end: str = "\n",
     file: Optional[TextIO] = None,
@@ -643,13 +884,21 @@ def print_black(
 ) -> None:
     """Print text formatted in black."""
     _print_color(
-        "black", *values, style=style, sep=sep, end=end, file=file, flush=flush
+        "black",
+        *values,
+        style=style,
+        bg=bg,
+        sep=sep,
+        end=end,
+        file=file,
+        flush=flush,
     )
 
 
 def print_red(
     *values: Any,
     style: Optional[str] = None,
+    bg: Optional[str] = None,
     sep: str = " ",
     end: str = "\n",
     file: Optional[TextIO] = None,
@@ -657,13 +906,21 @@ def print_red(
 ) -> None:
     """Print text formatted in red."""
     _print_color(
-        "red", *values, style=style, sep=sep, end=end, file=file, flush=flush
+        "red",
+        *values,
+        style=style,
+        bg=bg,
+        sep=sep,
+        end=end,
+        file=file,
+        flush=flush,
     )
 
 
 def print_green(
     *values: Any,
     style: Optional[str] = None,
+    bg: Optional[str] = None,
     sep: str = " ",
     end: str = "\n",
     file: Optional[TextIO] = None,
@@ -671,13 +928,21 @@ def print_green(
 ) -> None:
     """Print text formatted in green."""
     _print_color(
-        "green", *values, style=style, sep=sep, end=end, file=file, flush=flush
+        "green",
+        *values,
+        style=style,
+        bg=bg,
+        sep=sep,
+        end=end,
+        file=file,
+        flush=flush,
     )
 
 
 def print_yellow(
     *values: Any,
     style: Optional[str] = None,
+    bg: Optional[str] = None,
     sep: str = " ",
     end: str = "\n",
     file: Optional[TextIO] = None,
@@ -685,13 +950,21 @@ def print_yellow(
 ) -> None:
     """Print text formatted in yellow."""
     _print_color(
-        "yellow", *values, style=style, sep=sep, end=end, file=file, flush=flush
+        "yellow",
+        *values,
+        style=style,
+        bg=bg,
+        sep=sep,
+        end=end,
+        file=file,
+        flush=flush,
     )
 
 
 def print_blue(
     *values: Any,
     style: Optional[str] = None,
+    bg: Optional[str] = None,
     sep: str = " ",
     end: str = "\n",
     file: Optional[TextIO] = None,
@@ -699,13 +972,21 @@ def print_blue(
 ) -> None:
     """Print text formatted in blue."""
     _print_color(
-        "blue", *values, style=style, sep=sep, end=end, file=file, flush=flush
+        "blue",
+        *values,
+        style=style,
+        bg=bg,
+        sep=sep,
+        end=end,
+        file=file,
+        flush=flush,
     )
 
 
 def print_magenta(
     *values: Any,
     style: Optional[str] = None,
+    bg: Optional[str] = None,
     sep: str = " ",
     end: str = "\n",
     file: Optional[TextIO] = None,
@@ -713,13 +994,21 @@ def print_magenta(
 ) -> None:
     """Print text formatted in magenta."""
     _print_color(
-        "magenta", *values, style=style, sep=sep, end=end, file=file, flush=flush
+        "magenta",
+        *values,
+        style=style,
+        bg=bg,
+        sep=sep,
+        end=end,
+        file=file,
+        flush=flush,
     )
 
 
 def print_cyan(
     *values: Any,
     style: Optional[str] = None,
+    bg: Optional[str] = None,
     sep: str = " ",
     end: str = "\n",
     file: Optional[TextIO] = None,
@@ -727,13 +1016,21 @@ def print_cyan(
 ) -> None:
     """Print text formatted in cyan."""
     _print_color(
-        "cyan", *values, style=style, sep=sep, end=end, file=file, flush=flush
+        "cyan",
+        *values,
+        style=style,
+        bg=bg,
+        sep=sep,
+        end=end,
+        file=file,
+        flush=flush,
     )
 
 
 def print_white(
     *values: Any,
     style: Optional[str] = None,
+    bg: Optional[str] = None,
     sep: str = " ",
     end: str = "\n",
     file: Optional[TextIO] = None,
@@ -741,5 +1038,12 @@ def print_white(
 ) -> None:
     """Print text formatted in white."""
     _print_color(
-        "white", *values, style=style, sep=sep, end=end, file=file, flush=flush
+        "white",
+        *values,
+        style=style,
+        bg=bg,
+        sep=sep,
+        end=end,
+        file=file,
+        flush=flush,
     )

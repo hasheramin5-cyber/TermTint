@@ -451,7 +451,6 @@ def test_package_exports():
     assert termtint.rgb_to_ansi is termtint.core.rgb_to_ansi
     assert termtint.rgb_to_256 is termtint.core.rgb_to_256
     assert termtint.color256_to_ansi is termtint.core.color256_to_ansi
-    assert termtint.__version__ == "0.4.0"
-
-
-
+    assert termtint.strip_ansi is termtint.core.strip_ansi
+    assert termtint.visible_len is termtint.core.visible_len
+    assert termtint.__version__ == "0.5.0"

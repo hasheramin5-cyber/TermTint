@@ -38,9 +38,11 @@ print(styled("Deployed", theme="success"))
 ## Features
 
 - **Zero Runtime Dependencies**: Uses only the Python standard library.
-- **Reusable `Style` Objects**: First-class, immutable styling objects with composable chaining (`.bold()`, `.italic()`, etc.), operator composition (`+`), and direct application (`style("text")`).
+- **Background Color Support**: Full support for named background colors (`bg="blue"`), 24-bit True Color (`bg_rgb=(r, g, b)`), and 256-color ANSI backgrounds (`bg_color256=n`) across `colored()`, `styled()`, `Style`, `Theme`, and `print_*` functions.
+- **ANSI Utility Functions**: `strip_ansi()` to remove ANSI escape sequences and `visible_len()` to measure visible terminal string width ignoring ANSI formatting.
+- **Reusable `Style` Objects**: First-class, immutable styling objects with composable chaining (`.bold()`, `.italic()`, `.with_bg()`, etc.), operator composition (`+`), and direct application (`style("text")`).
 - **Smart Capability Detection**: Query terminal color tier directly (`supports_color()`, `supports_256color()`, `supports_truecolor()`).
-- **Intelligent Color Fallback**: Automatic graceful color degradation (True Color -> 256-color -> ANSI 16-color) when running in limited terminals.
+- **Intelligent Color Fallback**: Automatic graceful color degradation (True Color -> 256-color -> ANSI 16-color) for both foreground and background colors when running in limited terminals.
 - **Fluent Styling (`styled`)**: Flexible formatting with single or multiple styles (`["bold", "underline"]`).
 - **Semantic Themes (`Theme`)**: Role-based theming (`"success"`, `"error"`, `"warning"`, `"info"`, `"muted"`, `"brand"`), full `Style` integration, and custom application themes.
 - **Named, RGB & 256 Colors**: 8 standard colors, 24-bit True Color (`rgb=(r, g, b)`), and 256-color ANSI (`color256=n`).
@@ -71,6 +73,8 @@ from termtint import (
     Theme,
     colored,
     styled,
+    strip_ansi,
+    visible_len,
     supports_truecolor,
     supports_256color,
     print_green,
@@ -79,53 +83,59 @@ from termtint import (
     print_256,
 )
 
-# 1. Reusable Style objects (v0.4.0)
-header_style = Style("cyan", style="bold").underline()
-alert_style = Style("red", style="bold")
-badge_style = Style(color256=198, style="reverse")
+# 1. Reusable Style objects with Background Colors (v0.5.0)
+header_style = Style("cyan", bg="blue", style="bold").underline()
+alert_style = Style("white", bg="red", style="bold")
+badge_style = Style("black", bg_color256=198, style="bold")
 
 print(header_style("=== Dashboard ==="))
 print(alert_style("Critical fault detected!"))
 badge_style.print("NEW")
 
-# Style composition and smart fallback
+# Style composition, background chaining, and smart fallback
 composed = header_style + Style(style="italic")
-truecolor_style = Style(rgb=(255, 120, 0), fallback=True)
-truecolor_style.print("Orange text that degrades gracefully on 16/256 color terminals")
+truecolor_style = Style(rgb=(255, 255, 255), bg_rgb=(255, 120, 0), fallback=True)
+truecolor_style.print("White on orange text that degrades gracefully on 16/256 color terminals")
 
-# 2. Terminal capability detection (v0.4.0)
+# 2. Terminal capability detection
 if supports_truecolor():
     print("Full 24-bit True Color supported!")
 elif supports_256color():
     print("256-color ANSI supported!")
 
-# 3. Fluent styling with styled()
+# 3. Fluent styling with styled() and Background Colors
 print(styled("Header", style="bold"))
-print(styled("Warning!", color="yellow", style="bold"))
-print(styled("Accent", rgb=(255, 128, 0), style="italic", fallback=True))
-print(styled("Badge", color256=198, style=["bold", "reverse"]))
-print(styled("Alert", color="red", style=("bold", "underline")))
+print(styled("Warning!", color="black", bg="yellow", style="bold"))
+print(styled("Accent", rgb=(255, 255, 255), bg_rgb=(255, 128, 0), style="italic", fallback=True))
+print(styled("Badge", color256=15, bg_color256=198, style=["bold"]))
+print(styled("Alert", color="white", bg="red", style=("bold", "underline")))
 print(styled("Success", theme="success"))
 
-# 4. Classic colored() API
-print(colored("Operation succeeded", "green"))
-print(colored("Custom coral text", rgb=(255, 127, 80)))
-print(colored("Vibrant orange", color256=208))
+# 4. Classic colored() API with backgrounds
+print(colored("Operation succeeded", "green", bg="black"))
+print(colored("Custom coral tag", rgb=(255, 255, 255), bg_rgb=(255, 127, 80)))
+print(colored("Vibrant banner", color256=0, bg_color256=208))
 
-# 5. Role-based Theme API with Style integration
+# 5. ANSI Utility Functions (v0.5.0)
+styled_banner = styled("  STATUS: ACTIVE  ", color="white", bg="green", style="bold")
+print(f"Formatted length: {len(styled_banner)}")       # includes ANSI escapes (e.g., 34)
+print(f"Visible terminal width: {visible_len(styled_banner)}")  # 18 characters
+clean_log = strip_ansi(styled_banner)                  # "  STATUS: ACTIVE  "
+
+# 6. Role-based Theme API with Background Support
 custom_theme = Theme({
-    "success": Style("green", style="bold"),
-    "brand": {"rgb": (0, 122, 255), "style": "bold"},
-    "notice": Style(color256=214, style="italic"),
+    "success": Style("white", bg="green", style="bold"),
+    "brand": {"color": "white", "bg_rgb": (0, 122, 255), "style": "bold"},
+    "notice": Style(color256=0, bg_color256=214, style="italic"),
 })
 custom_theme.print("System online", "brand")
 custom_theme.print("Backup complete", "success")
 
-# 6. Convenience print functions
-print_green("System online")
-print_red("Fatal crash occurred!", style="bold")
-print_rgb((255, 165, 0), "Warning: battery at 15%")
-print_256(196, "Critical temperature threshold exceeded")
+# 7. Convenience print functions with background colors
+print_green("System online", bg="black")
+print_red("Fatal crash occurred!", bg="white", style="bold")
+print_rgb((255, 255, 255), "Warning: battery at 15%", bg_rgb=(255, 165, 0))
+print_256(15, "Critical temperature threshold exceeded", bg_color256=196)
 ```
 
 ---
@@ -177,6 +187,9 @@ Available chaining methods:
 - `.with_color(color)`: Sets foreground color name
 - `.with_rgb(rgb)`: Sets 24-bit True Color tuple
 - `.with_color256(code)`: Sets 256-color ANSI index
+- `.with_bg(bg)`: Sets background color name
+- `.with_bg_rgb(rgb)`: Sets 24-bit True Color background tuple
+- `.with_bg_color256(code)`: Sets 256-color ANSI background index
 - `.with_style(style)`: Sets or overrides styles
 - `.with_theme(role)`: Sets semantic theme role
 - `.with_fallback(fallback)`: Sets fallback degradation flag
@@ -340,7 +353,60 @@ print(styled("Electric blue", color256=33, style="underline"))
 ```
 
 > [!NOTE]
-> `color`, `rgb`, and `color256` are mutually exclusive. Specify at most one color source per call.
+> Foreground options (`color`, `rgb`, `color256`) are mutually exclusive.
+> Background options (`bg`, `bg_rgb`, `bg_color256`) are likewise mutually exclusive.
+> You can freely combine any foreground color option with any background color option!
+
+### 4. Background Colors (v0.5.0)
+
+TermTint supports full background styling via `bg`, `bg_rgb`, and `bg_color256`:
+
+- **Named Background**: `bg="blue"` (options: `"black"`, `"red"`, `"green"`, `"yellow"`, `"blue"`, `"magenta"`, `"cyan"`, `"white"`)
+- **True Color Background**: `bg_rgb=(255, 128, 0)`
+- **256-Color Background**: `bg_color256=236`
+
+```python
+# Named background
+print(colored("White on blue", "white", bg="blue"))
+print(styled("Alert", color="black", bg="yellow", style="bold"))
+
+# True Color (24-bit) background with fallback
+print(styled("Header", color="white", bg_rgb=(30, 60, 120), fallback=True))
+
+# 256-color background
+print(styled("Code snippet", color256=255, bg_color256=236))
+```
+
+---
+
+## ANSI Utilities (v0.5.0)
+
+TermTint includes zero-dependency utility functions to handle ANSI-formatted strings cleanly:
+
+### `strip_ansi(text)`
+Strips all ANSI SGR formatting and OSC hyperlink escape codes from a string, returning pristine clean text. Ideal for logging, writing to plain files, or unit test assertions:
+
+```python
+from termtint import styled, strip_ansi
+
+badge = styled("  READY  ", color="green", bg="black", style="bold")
+clean = strip_ansi(badge)  # "  READY  "
+```
+
+### `visible_len(text)`
+Calculates the visible terminal column width of a string by stripping ANSI escape sequences before measuring length. Essential for building aligned tables, CLI columns, and terminal borders:
+
+```python
+from termtint import styled, visible_len
+
+styled_text = styled("Hello, World!", color="cyan", style="bold")
+raw_len = len(styled_text)          # 26 (including ANSI escape bytes)
+col_width = visible_len(styled_text) # 13 (actual displayed characters)
+
+# Perfect column padding:
+pad = 20 - visible_len(styled_text)
+print(styled_text + " " * pad + "| Next Column")
+```
 
 ---
 

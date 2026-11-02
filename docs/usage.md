@@ -308,3 +308,73 @@ print(styled("Forced color text", color="magenta"))
 disable_color()
 print(styled("Plain text output", color="magenta"))
 ```
+
+---
+
+## Background Colors (v0.5.0)
+
+TermTint supports comprehensive background color formatting via `bg`, `bg_rgb`, and `bg_color256` across `styled()`, `colored()`, `Style`, `Theme`, and `print_*` functions:
+
+```python
+from termtint import Style, colored, styled, print_red
+
+# 1. Named Backgrounds
+print(colored("White on blue", "white", bg="blue"))
+print(styled("Warning Banner", color="black", bg="yellow", style="bold"))
+
+# 2. 24-bit True Color and 256-color Backgrounds
+print(styled("Accent Tag", color="white", bg_rgb=(120, 80, 255)))
+print(styled("Log Badge", color256=15, bg_color256=238))
+
+# 3. Background Fluent Chaining on Style
+alert_box = (
+    Style("white", style="bold")
+    .with_bg("red")
+    .underline()
+)
+alert_box.print("CRITICAL HARDWARE FAILURE")
+
+# 4. Convenience print functions with background
+print_red("Disk full!", bg="white", style="bold")
+```
+
+---
+
+## ANSI Utilities (v0.5.0)
+
+When dealing with styled terminal text, strings contain ANSI escape sequences that distort standard length calculations or pollute log files. TermTint provides two lightweight, zero-dependency utility functions:
+
+### 1. Stripping ANSI Codes with `strip_ansi()`
+
+Use `strip_ansi()` to clean formatted output for plain text files, loggers, or unit tests:
+
+```python
+from termtint import strip_ansi, styled
+
+styled_title = styled("System Report", color="cyan", bg="black", style="bold")
+
+# Write clean string to log file
+clean_title = strip_ansi(styled_title)
+with open("system.log", "a") as f:
+    f.write(clean_title + "\n")
+```
+
+### 2. Precise Column Alignment with `visible_len()`
+
+Standard `len()` counts invisible ANSI control bytes, making table alignment uneven. `visible_len()` calculates the visible terminal width:
+
+```python
+from termtint import styled, visible_len
+
+rows = [
+    ("Status", styled("PASS", color="green", style="bold")),
+    ("Warning", styled("DEGRADED", color="yellow")),
+    ("Error", styled("FAILED", color="red", style="bold")),
+]
+
+col_width = 15
+for label, val in rows:
+    pad = col_width - visible_len(val)
+    print(f"{label:<10} | {val}{' ' * pad} |")
+```
+

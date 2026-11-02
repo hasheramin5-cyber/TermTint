@@ -4,14 +4,25 @@ import sys
 from typing import Any, Optional, TextIO
 
 from termtint.core import (
+    BG_COLORS,
     COLORS,
     _normalize_styles,
     _render_ansi,
+    _validate_bg_color256,
+    _validate_bg_rgb,
     _validate_color256,
     _validate_rgb,
 )
 
-ALLOWED_ROLE_KEYS = {"color", "style", "rgb", "color256"}
+ALLOWED_ROLE_KEYS = {
+    "color",
+    "style",
+    "rgb",
+    "color256",
+    "bg",
+    "bg_rgb",
+    "bg_color256",
+}
 
 
 def _validate_role_definition(role: str, definition: Any) -> dict[str, Any]:
@@ -63,6 +74,17 @@ def _validate_role_definition(role: str, definition: Any) -> dict[str, Any]:
             "'color', 'rgb', or 'color256'."
         )
 
+    # Check background color mutual exclusivity
+    bg_keys = [
+        k for k in ("bg", "bg_rgb", "bg_color256")
+        if k in definition and definition[k] is not None
+    ]
+    if len(bg_keys) > 1:
+        raise ValueError(
+            f"Theme role '{role}' cannot specify more than one of "
+            "'bg', 'bg_rgb', or 'bg_color256'."
+        )
+
     validated: dict[str, Any] = {}
 
     if "color" in definition and definition["color"] is not None:
@@ -88,6 +110,30 @@ def _validate_role_definition(role: str, definition: Any) -> dict[str, Any]:
     if "color256" in definition and definition["color256"] is not None:
         _validate_color256(definition["color256"])
         validated["color256"] = definition["color256"]
+
+    if "bg" in definition and definition["bg"] is not None:
+        bg_val = definition["bg"]
+        if isinstance(bg_val, bool) or not isinstance(bg_val, str):
+            tname = type(bg_val).__name__
+            raise TypeError(
+                f"Role '{role}' bg must be a string, got {tname}."
+            )
+        bg_lower = bg_val.lower()
+        if bg_lower not in BG_COLORS:
+            valid_bgs = ", ".join(sorted(BG_COLORS.keys()))
+            raise ValueError(
+                f"Invalid background color '{bg_val}' in role '{role}'. "
+                f"Supported background colors are: {valid_bgs}"
+            )
+        validated["bg"] = bg_lower
+
+    if "bg_rgb" in definition and definition["bg_rgb"] is not None:
+        _validate_bg_rgb(definition["bg_rgb"])
+        validated["bg_rgb"] = tuple(definition["bg_rgb"])
+
+    if "bg_color256" in definition and definition["bg_color256"] is not None:
+        _validate_bg_color256(definition["bg_color256"])
+        validated["bg_color256"] = definition["bg_color256"]
 
     if "style" in definition and definition["style"] is not None:
         style_val = definition["style"]
@@ -174,6 +220,9 @@ class Theme:
             style=role_def.get("style"),
             rgb=role_def.get("rgb"),
             color256=role_def.get("color256"),
+            bg=role_def.get("bg"),
+            bg_rgb=role_def.get("bg_rgb"),
+            bg_color256=role_def.get("bg_color256"),
         )
 
     def styled(
@@ -205,13 +254,25 @@ class Theme:
         elif "color256" in role_def:
             color_code = _validate_color256(role_def["color256"])
 
+        bg_code: Optional[str] = None
+        if "bg" in role_def:
+            bg_code = BG_COLORS[role_def["bg"]]
+        elif "bg_rgb" in role_def:
+            bg_code = _validate_bg_rgb(role_def["bg_rgb"])
+        elif "bg_color256" in role_def:
+            bg_code = _validate_bg_color256(role_def["bg_color256"])
+
         style_codes = (
             _normalize_styles(role_def["style"])
             if "style" in role_def
             else []
         )
         return _render_ansi(
-            text, color_code=color_code, style_codes=style_codes, stream=stream
+            text,
+            color_code=color_code,
+            style_codes=style_codes,
+            bg_code=bg_code,
+            stream=stream,
         )
 
     def print(
