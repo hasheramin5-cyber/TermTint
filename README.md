@@ -9,6 +9,10 @@
 
 ---
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/hasheramin5-cyber/TermTint/main/docs/gallery/termtint_pro_01_overview.png" alt="TermTint gallery overview" width="720">
+</p>
+
 ## Why TermTint?
 
 Normally, Python prints unstyled plain text in your terminal:
@@ -137,6 +141,19 @@ print_red("Fatal crash occurred!", bg="white", style="bold")
 print_rgb((255, 255, 255), "Warning: battery at 15%", bg_rgb=(255, 165, 0))
 print_256(15, "Critical temperature threshold exceeded", bg_color256=196)
 ```
+
+---
+
+## Gallery
+
+| Dashboard | Log viewer |
+| :--: | :--: |
+| ![Dashboard](https://raw.githubusercontent.com/hasheramin5-cyber/TermTint/main/docs/gallery/termtint_pro_14_dashboard.png) | ![Log viewer](https://raw.githubusercontent.com/hasheramin5-cyber/TermTint/main/docs/gallery/termtint_pro_11_log-viewer.png) |
+| **True Color gradients** | **Tokyo Night palette** |
+| ![True Color](https://raw.githubusercontent.com/hasheramin5-cyber/TermTint/main/docs/gallery/termtint_pro_19_true-color-gradients.png) | ![Tokyo Night](https://raw.githubusercontent.com/hasheramin5-cyber/TermTint/main/docs/gallery/termtint_pro_26_palette-tokyo-night.png) |
+
+All screenshots are built with TermTint's own primitives and `visible_len()`.
+See the [full gallery](https://github.com/hasheramin5-cyber/TermTint/blob/main/docs/gallery/gallery.md).
 
 ---
 
